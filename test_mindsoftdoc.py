@@ -96,6 +96,9 @@ def test_documento_generado():
 
     assert doc.count('w:pStyle w:val="Heading2"') == 7, doc.count('w:pStyle w:val="Heading2"')
     assert doc.count('<w:tbl>') == 1, doc.count('<w:tbl>')
+    assert doc.count('w:fill="001689"') == 3, 'cabecera azul en las 3 columnas'
+    assert doc.count('w:fill="EEF1F8"') == 0, 'las filas no deben llevar sombreado alternado'
+    assert doc.count('w:fill="FFFFFF"') == 9, 'las 3 filas de datos van en blanco'
     assert doc.count('w:numId w:val="90"') == 3, 'vinetas'
     assert doc.count('w:numId w:val="91"') == 3, 'numeradas'
     assert doc.count('<w:br w:type="page"/>') == 3, 'saltos de pagina'

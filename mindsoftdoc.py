@@ -194,9 +194,10 @@ def p_tabla(cabeceras, filas):
          % (ANCHO_TABLA, ''.join('<w:gridCol w:w="%d"/>' % a for a in w)))
     x += ('<w:tr><w:trPr><w:tblHeader/></w:trPr>%s</w:tr>'
           % ''.join(_celda(a, '001689', c, True) for a, c in zip(w, cabeceras)))
-    for i, fila in enumerate(filas):
-        fondo = 'FFFFFF' if i % 2 == 0 else 'EEF1F8'
-        x += '<w:tr>%s</w:tr>' % ''.join(_celda(a, fondo, c) for a, c in zip(w, fila))
+    for fila in filas:
+        # Estandar de la casa: cabecera azul y filas blancas, sin sombreado
+        # alternado. El zebra no sobrevive a un guardado desde ONLYOFFICE.
+        x += '<w:tr>%s</w:tr>' % ''.join(_celda(a, 'FFFFFF', c) for a, c in zip(w, fila))
     return x + '</w:tbl>' + ESPACIADOR
 
 def p_imagen(rid, ancho_emu, alto_emu, indice):

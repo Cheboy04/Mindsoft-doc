@@ -60,7 +60,7 @@ El pie con la direccion y los telefonos de Mindsoft es fijo y no se configura.
 | texto suelto | Parrafo Verdana 10, justificado |
 | `- item` | Vineta |
 | `1. item` | Lista numerada |
-| tabla con pipes | Cabecera azul y filas alternadas |
+| tabla con pipes | Cabecera azul y filas en blanco |
 | `**negrita**` `*cursiva*` `` `codigo` `` | Formato en linea |
 | `[texto](url)` | Texto, con la url entre parentesis si es http |
 | `![pie](captura.png)` | Imagen centrada con pie de figura |
@@ -82,7 +82,7 @@ sea XML valido con las 24 partes del formato intactas respecto de la plantilla.
 Se valido ademas contra un documento real ya aprobado, el reporte de la
 cafeteria de Academia Cotopaxi: regenerado desde markdown da el mismo texto
 caracter por caracter una vez aplicadas las reglas de la casa, y la misma
-estructura (13 titulos, 14 tablas, 60 filas alternadas, 145 negritas).
+estructura (13 titulos, 14 tablas, 145 negritas).
 
 ## Limitaciones conocidas
 
@@ -91,9 +91,9 @@ estructura (13 titulos, 14 tablas, 60 filas alternadas, 145 negritas).
 - Sin listas anidadas ni notas al pie.
 - El indice lo arma Word al abrir el archivo. En LibreOffice u ONLYOFFICE hay
   que refrescarlo a mano con F9.
-- Guardar el documento desde ONLYOFFICE reescribe los estilos y pierde el
-  sombreado alternado de las tablas. Si hay que editar a mano, conviene hacerlo
-  en Word, o mejor editar el markdown y regenerar.
+- Guardar el documento desde ONLYOFFICE reescribe los estilos. Si hay que
+  editar a mano, conviene hacerlo en Word, o mejor editar el markdown y
+  regenerar.
 
 ## Archivos
 
