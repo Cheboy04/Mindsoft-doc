@@ -5,6 +5,7 @@ archivo markdown. El formato no se reinventa: sale del XML literal de
 `plantilla.docx`, asi que fuentes, colores, encabezado, pie, vinetas y tablas
 salen identicos siempre.
 
+    python3 mindsoftdoc.py --nuevo                   # menu: arma el .md de arranque
     python3 mindsoftdoc.py documento.md              # deja documento.docx al lado
     python3 mindsoftdoc.py documento.md -o final.docx
 
@@ -25,6 +26,78 @@ reemplaza:
 Al terminar informa que corrigio, por ejemplo `Reglas de la casa: 28 guiones
 largos`. Nunca cambia nada en silencio, y aplica sin importar quien escriba el
 markdown.
+
+## Empezar un documento: `--nuevo`
+
+El menu pregunta dos cosas y escribe el `.md` de arranque:
+
+    $ python3 mindsoftdoc.py --nuevo
+
+    1. Tipo de documento
+      1) Propuesta con costos       3) Documento de analisis    5) Cotizacion
+      2) Propuesta sin costos       4) Guia / informativo
+    > 1
+
+    2. Bloques reutilizables
+      1) Forma de pago 50/50           [x]    4) Manejo de hosting externo
+      2) SEM / Google Ads                     5) Plan de soporte mensual
+      3) Hosting dedicado                     6) Portafolio de clientes  [x]
+    > 1 2 6
+
+    3. Datos
+       titulo: Lanzamiento + Agente AI
+       cliente: InmoWeb
+
+    Escrito: inmoweb.md
+
+Los bloques que se ofrecen dependen del tipo elegido, y las variables que se
+preguntan salen de los propios bloques. Con `--nuevo propuesta-con-costos` se
+salta la primera pregunta.
+
+El menu esta aca a proposito y no en la generacion: **generar un `.md` tiene que
+dar siempre el mismo `.docx`**. El `.md` es la fuente de verdad, se versiona y se
+regenera cuando haga falta.
+
+## Bloques reutilizables
+
+Una linea sola, en el lugar del documento donde va el bloque:
+
+    @incluir bloques/portafolio-clientes.md
+
+Se busca junto al `.md` y, si no esta, junto al generador; asi `bloques/...`
+funciona desde cualquier carpeta. Un bloque que no existe corta con un error, no
+se ignora.
+
+Dentro de un bloque, `{{variable}}` se reemplaza con el campo del front-matter
+que tenga ese nombre:
+
+    Se propone posicionar estrategicamente a {{cliente}} en Ecuador.
+
+Lo que no tenga valor se deja a la vista en el documento y se avisa al terminar
+(`AVISO - variables sin valor: cliente`). Nunca se borra en silencio.
+
+| Bloque | Va en |
+|---|---|
+| `bloques/portafolio-clientes.md` | Propuestas y cotizaciones |
+| `bloques/forma-de-pago-50-50.md` | Todo lo que lleve costo |
+| `bloques/sem-google-ads.md` | Propuestas con campana |
+| `bloques/hosting-dedicado.md` | Propuestas con infraestructura |
+| `bloques/hosting-externo.md` | Propuestas con infraestructura |
+| `bloques/soporte-mensual.md` | Propuestas con soporte |
+
+Las specs y los precios de los bloques de hosting y soporte salen de propuestas
+reales: **revisalos en cada propuesta antes de mandarla**.
+
+Dos bloques cubren una sola de las dos variantes que se usan en la practica, asi
+que a veces hay que escribir la seccion a mano en vez de incluirla:
+
+- `forma-de-pago-50-50.md` es la version por fases (InmoWeb, BYD). La version
+  global, "50% anticipo / 50% al finalizar" (Siegfried PMC, Eliana), no tiene
+  bloque.
+- `hosting-dedicado.md` es la oferta sobre Debian (BYD). La oferta sobre
+  AlmaLinux con WHM/cPanel (Inmoweb) no tiene bloque.
+
+Los `<!-- comentarios -->` de los esqueletos no llegan al documento.
 
 ## El archivo de entrada
 
@@ -76,19 +149,29 @@ Los `###` no entran al indice, a proposito: el indice lista solo las secciones.
     python3 test_mindsoftdoc.py
 
 Comprueba las reglas de la casa, el marcado en linea, el reparto de columnas,
-la medicion de imagenes, la lectura del markdown, y que el documento generado
-sea XML valido con las 24 partes del formato intactas respecto de la plantilla.
+la medicion de imagenes, la lectura del markdown, los `@incluir` y las
+variables (incluidos el bloque que falta y el ciclo), que los comentarios no
+lleguen al documento, que los 5 tipos generen un `.docx` valido con todos sus
+bloques, y que el documento generado sea XML valido con las 24 partes del
+formato intactas respecto de la plantilla.
 
-Se valido ademas contra un documento real ya aprobado, el reporte de la
-cafeteria de Academia Cotopaxi: regenerado desde markdown da el mismo texto
-caracter por caracter una vez aplicadas las reglas de la casa, y la misma
-estructura (13 titulos, 14 tablas, 145 negritas).
+Se valido ademas contra dos documentos reales ya aprobados:
+
+- El reporte de la cafeteria de Academia Cotopaxi: regenerado desde markdown da
+  el mismo texto caracter por caracter una vez aplicadas las reglas de la casa,
+  y la misma estructura (13 titulos, 14 tablas, 145 negritas).
+- La propuesta de Siegfried PMC, ya con bloques: 45 lineas de markdown mas un
+  `@incluir` del portafolio.
 
 ## Limitaciones conocidas
 
 - Los bloques de codigo con ``` salen como parrafos normales. Si los necesitan
   en recuadro, se agrega.
 - Sin listas anidadas ni notas al pie.
+- `--nuevo` necesita una terminal interactiva. Para armar un `.md` sin menu, se
+  copia a mano el esqueleto de `esqueletos/`.
+- `{{variables}}` funciona en el cuerpo del documento, no dentro del
+  front-matter.
 - El indice lo arma Word al abrir el archivo. En LibreOffice u ONLYOFFICE hay
   que refrescarlo a mano con F9.
 - Guardar el documento desde ONLYOFFICE reescribe los estilos. Si hay que
@@ -101,5 +184,7 @@ estructura (13 titulos, 14 tablas, 145 negritas).
 |---|---|
 | `mindsoftdoc.py` | El generador |
 | `plantilla.docx` | El formato de la casa. No editar salvo para cambiar el formato de todos los documentos |
+| `bloques/` | Bloques reutilizables. Texto, sin codigo |
+| `esqueletos/` | Estructura de cada tipo de documento |
 | `ejemplo.md` / `ejemplo.docx` | Muestra de cada elemento soportado |
 | `test_mindsoftdoc.py` | Verificacion |

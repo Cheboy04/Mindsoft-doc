@@ -79,6 +79,73 @@ def test_lectura_markdown():
     print('  markdown: titulos, listas, tabla y salto reconocidos')
 
 
+def test_incluir_y_variables():
+    d = tempfile.mkdtemp()
+    with open(os.path.join(d, 'bloque.md'), 'w', encoding='utf8') as f:
+        f.write('## Bloque\n\nHola {{cliente}}, van {{monto}}.\n')
+    md._faltantes.clear()
+    meta, bloques = md.leer_markdown(
+        '---\ncliente: InmoWeb\n---\n\nAntes.\n\n@incluir bloque.md\n\nDespues.\n', d)
+    tipos = [t for t, _ in bloques]
+    assert tipos == ['p', 'h2', 'p', 'p'], tipos
+    assert bloques[0][1] == 'Antes.' and bloques[3][1] == 'Despues.', bloques
+    assert bloques[2][1] == 'Hola InmoWeb, van {{monto}}.', bloques[2]
+    assert md._faltantes == {'monto'}, md._faltantes
+
+    # un bloque que no existe se avisa, no se ignora
+    try:
+        md.leer_markdown('@incluir no-existe.md\n', d)
+        assert False, 'deberia haber fallado'
+    except SystemExit as e:
+        assert 'no-existe.md' in str(e), e
+
+    # un ciclo corta en vez de colgarse
+    with open(os.path.join(d, 'ciclo.md'), 'w', encoding='utf8') as f:
+        f.write('@incluir ciclo.md\n')
+    try:
+        md.leer_markdown('@incluir ciclo.md\n', d)
+        assert False, 'deberia haber fallado'
+    except SystemExit as e:
+        assert 'ciclo' in str(e), e
+    print('  bloques: @incluir resuelto, variables sustituidas, faltantes reportadas')
+
+
+def test_comentarios_no_llegan_al_documento():
+    meta, bloques = md.leer_markdown('Uno.\n\n<!-- nota para quien escribe -->\n\nDos.\n')
+    visible = ' '.join(d for t, d in bloques if t == 'p')
+    assert 'nota para quien escribe' not in visible, visible
+    assert 'Uno.' in visible and 'Dos.' in visible, visible
+    print('  comentarios: las notas del esqueleto no llegan al documento')
+
+
+def test_esqueletos_y_bloques_generan():
+    """Cada tipo, con todos sus bloques, tiene que producir un .docx valido."""
+    for clave, etiqueta, rotulo in md.TIPOS:
+        archivos = [b[0] for b in md.bloques_de(clave)]
+        datos = dict((v, 'VALOR') for v in md.variables_de(archivos))
+        datos.update(titulo='T', subtitulo='S', encabezado='E')
+        texto = md.armar_nuevo(clave, archivos, datos)
+        assert 'rotulo: %s' % rotulo in texto, texto[:200]
+
+        d = tempfile.mkdtemp()
+        ruta = os.path.join(d, clave + '.md')
+        with open(ruta, 'w', encoding='utf8') as f:
+            f.write(texto)
+        md._faltantes.clear()
+        salida = md.generar(ruta, os.path.join(d, 'x.docx'))
+
+        doc = zipfile.ZipFile(salida).read('word/document.xml').decode('utf8')
+        parseString(doc)
+        visible = ''.join(re.findall(r'<w:t[^>]*>([^<]*)</w:t>', doc))
+        assert not md._faltantes, (clave, md._faltantes)
+        assert '{{' not in visible, (clave, 'quedo una variable sin sustituir')
+        assert '<!--' not in visible, (clave, 'quedo un comentario del esqueleto')
+        malos = sorted({c for c in visible if c in PROHIBIDOS})
+        assert not malos, (clave, malos)
+        assert rotulo in visible, (clave, 'falta el rotulo en la portada')
+    print('  esqueletos: los %d tipos generan .docx valido con todos sus bloques'
+          % len(md.TIPOS))
+
 def test_documento_generado():
     salida = os.path.join(tempfile.mkdtemp(), 'ejemplo.docx')
     md._conteo.clear()
@@ -132,5 +199,8 @@ if __name__ == '__main__':
     test_anchos_de_tabla()
     test_medir_imagen()
     test_lectura_markdown()
+    test_incluir_y_variables()
+    test_comentarios_no_llegan_al_documento()
+    test_esqueletos_y_bloques_generan()
     ruta = test_documento_generado()
     print('TODO OK -> %s' % ruta)

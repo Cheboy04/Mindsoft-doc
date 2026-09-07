@@ -28,6 +28,7 @@ REEMPLAZOS = [
     ('espacios duros',      {' ': ' ', ' ': ' ', ' ': ' '}),
 ]
 _conteo = {}
+_faltantes = set()
 
 def limpiar(texto):
     """Aplica las reglas de la casa y lleva la cuenta de lo reemplazado."""
@@ -41,6 +42,51 @@ def limpiar(texto):
 
 def resumen_limpieza():
     return ', '.join('%d %s' % (n, k) for k, n in sorted(_conteo.items())) or 'nada que corregir'
+
+# --------------------------------------------------------------------------
+# Bloques reutilizables: @incluir y {{variables}}
+# --------------------------------------------------------------------------
+INCLUIR = re.compile(r'^@incluir\s+(\S+)\s*$')
+VARIABLE = re.compile(r'\{\{\s*(\w+)\s*\}\}')
+
+def _ruta_bloque(nombre, base):
+    """Busca el bloque junto al .md y, si no, junto al generador."""
+    for cand in (os.path.join(base, nombre), os.path.join(AQUI, nombre)):
+        if os.path.exists(cand):
+            return cand
+    raise SystemExit('No encuentro el bloque: %s (buscado en %s y %s)'
+                     % (nombre, base, AQUI))
+
+def incluir(lineas, base, profundidad=0):
+    """Reemplaza cada linea '@incluir ruta' por el contenido de ese archivo."""
+    if profundidad > 10:
+        raise SystemExit('@incluir anidado demasiado profundo: hay un ciclo?')
+    out = []
+    for l in lineas:
+        m = INCLUIR.match(l.strip())
+        if not m:
+            out.append(l); continue
+        ruta = _ruta_bloque(m.group(1), base)
+        with open(ruta, encoding='utf8') as f:
+            dentro = f.read().replace('\r\n', '\n').split('\n')
+        # las lineas en blanco evitan que el bloque se pegue al texto vecino
+        out.append('')
+        out += incluir(dentro, os.path.dirname(ruta), profundidad + 1)
+        out.append('')
+    return out
+
+def sustituir(lineas, meta):
+    """Cambia {{variable}} por su valor del front-matter. Lo que falta se
+    deja a la vista y se reporta: nunca se borra en silencio."""
+    def cambiar(m):
+        if m.group(1) in meta:
+            return meta[m.group(1)]
+        _faltantes.add(m.group(1))
+        return m.group(0)
+    return [VARIABLE.sub(cambiar, l) for l in lineas]
+
+def resumen_variables():
+    return ', '.join(sorted(_faltantes))
 
 # --------------------------------------------------------------------------
 # Plantilla: de ahi salen la portada, la barra de seccion y el paquete
@@ -240,10 +286,10 @@ IMAGEN = re.compile(r'^!\[([^\]]*)\]\(([^)]+)\)$')
 VINETA = re.compile(r'^\s*[-*+]\s+(.*)$')
 NUMERADA = re.compile(r'^\s*\d+[.)]\s+(.*)$')
 
-def leer_markdown(texto):
+def leer_markdown(texto, base=None):
     """Devuelve (metadatos, bloques). Cada bloque es (tipo, dato)."""
-    texto = limpiar(texto.replace('\r\n', '\n'))
-    lineas = texto.split('\n')
+    base = base or AQUI
+    lineas = texto.replace('\r\n', '\n').split('\n')
     meta = {}
     if lineas and lineas[0].strip() == '---':
         fin = next((i for i in range(1, len(lineas)) if lineas[i].strip() == '---'), None)
@@ -253,6 +299,11 @@ def leer_markdown(texto):
                     k, v = l.split(':', 1)
                     meta[k.strip().lower()] = v.strip()
             lineas = lineas[fin + 1:]
+
+    # el front-matter va primero porque de ahi salen las variables
+    texto = '\n'.join(sustituir(incluir(lineas, base), meta))
+    texto = re.sub(r'<!--.*?-->', '', texto, flags=re.S)   # notas del esqueleto
+    lineas = limpiar(texto).split('\n')
 
     bloques, i, parrafo = [], 0, []
 
@@ -373,7 +424,7 @@ def escalar(px_ancho, px_alto):
 def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
     base = os.path.dirname(os.path.abspath(ruta_md))
     with open(ruta_md, encoding='utf8') as f:
-        meta, bloques = leer_markdown(f.read())
+        meta, bloques = leer_markdown(f.read(), base)
     ruta_salida = ruta_salida or os.path.splitext(ruta_md)[0] + '.docx'
 
     tpl = Plantilla(plantilla)
@@ -473,15 +524,135 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
             zout.writestr(nombre, datos)
     shutil.move(tmp, salida)
 
+
+# --------------------------------------------------------------------------
+# --nuevo: arma el .md de arranque. El menu vive aca, no en la generacion,
+# para que generar un .md siga dando siempre el mismo .docx.
+# --------------------------------------------------------------------------
+# clave, etiqueta, rotulo de portada
+TIPOS = [
+    ('propuesta-con-costos', 'Propuesta con costos',  'Propuesta'),
+    ('propuesta-sin-costos', 'Propuesta sin costos',  'Propuesta'),
+    ('analisis',             'Documento de analisis', 'Reporte'),
+    ('guia',                 'Guia / informativo',    'Guia'),
+    ('cotizacion',           'Cotizacion',            'Cotizacion'),
+]
+
+# archivo, etiqueta, tipos donde se ofrece, marcado por defecto.
+# El orden de esta lista es el orden en que salen en el documento.
+BLOQUES = [
+    ('forma-de-pago-50-50.md', 'Forma de pago 50/50',
+     ('propuesta-con-costos', 'cotizacion'), True),
+    ('sem-google-ads.md', 'SEM / Google Ads',
+     ('propuesta-con-costos', 'propuesta-sin-costos'), False),
+    ('hosting-dedicado.md', 'Hosting dedicado',
+     ('propuesta-con-costos', 'propuesta-sin-costos'), False),
+    ('hosting-externo.md', 'Manejo de hosting externo',
+     ('propuesta-con-costos', 'propuesta-sin-costos'), False),
+    ('soporte-mensual.md', 'Plan de soporte mensual',
+     ('propuesta-con-costos', 'propuesta-sin-costos'), False),
+    ('portafolio-clientes.md', 'Portafolio de clientes',
+     ('propuesta-con-costos', 'propuesta-sin-costos', 'cotizacion'), True),
+]
+
+def bloques_de(tipo):
+    return [b for b in BLOQUES if tipo in b[2]]
+
+def variables_de(archivos):
+    """Las variables no se declaran: se leen de los propios bloques."""
+    faltan = []
+    for a in archivos:
+        with open(os.path.join(AQUI, 'bloques', a), encoding='utf8') as f:
+            for v in VARIABLE.findall(f.read()):
+                if v not in faltan:
+                    faltan.append(v)
+    return faltan
+
+def armar_nuevo(tipo, archivos, datos):
+    """Devuelve el texto del .md. Sin entrada/salida: por eso se puede probar."""
+    rotulo = dict((t[0], t[2]) for t in TIPOS)[tipo]
+    with open(os.path.join(AQUI, 'esqueletos', tipo + '.md'), encoding='utf8') as f:
+        cuerpo = f.read().rstrip('\n')
+    campos = ['rotulo: ' + rotulo]
+    campos += ['%s: %s' % (k, datos.get(k, '')) for k in ('titulo', 'subtitulo', 'encabezado')]
+    campos += ['indice: si']
+    campos += ['%s: %s' % (k, v) for k, v in datos.items()
+               if k not in ('titulo', 'subtitulo', 'encabezado')]
+    incluidos = ''.join('\n@incluir bloques/%s\n' % a for a in archivos)
+    return '---\n%s\n---\n\n%s\n%s' % ('\n'.join(campos), cuerpo, incluidos)
+
+def _elegir(titulo, opciones, multiple=False, marcados=()):
+    print('\n%s' % titulo)
+    for i, etiqueta in enumerate(opciones, 1):
+        print('  %d) %-32s %s' % (i, etiqueta, '[x]' if i - 1 in marcados else ''))
+    while True:
+        crudo = input('> ' if not multiple else '> (numeros separados por espacio, Enter = los marcados) ')
+        crudo = crudo.strip()
+        if multiple and not crudo:
+            return list(marcados)
+        try:
+            elegidos = [int(x) - 1 for x in crudo.split()]
+        except ValueError:
+            print('  Solo numeros.'); continue
+        if not elegidos or any(e < 0 or e >= len(opciones) for e in elegidos):
+            print('  Fuera de rango.'); continue
+        if not multiple and len(elegidos) != 1:
+            print('  Elegi uno solo.'); continue
+        return elegidos
+
+def menu_nuevo(tipo=None, destino=None):
+    if tipo is None:
+        i = _elegir('1. Tipo de documento', [t[1] for t in TIPOS])[0]
+        tipo = TIPOS[i][0]
+    elif tipo not in [t[0] for t in TIPOS]:
+        raise SystemExit('Tipo desconocido: %s. Hay: %s'
+                         % (tipo, ', '.join(t[0] for t in TIPOS)))
+
+    disponibles = bloques_de(tipo)
+    archivos = []
+    if disponibles:
+        marcados = [i for i, b in enumerate(disponibles) if b[3]]
+        elegidos = _elegir('2. Bloques reutilizables', [b[1] for b in disponibles],
+                           multiple=True, marcados=marcados)
+        archivos = [disponibles[i][0] for i in sorted(elegidos)]
+
+    print('\n3. Datos')
+    datos = {}
+    for campo in ['titulo', 'subtitulo', 'encabezado'] + variables_de(archivos):
+        datos[campo] = input('   %s: ' % campo).strip()
+
+    destino = destino or (re.sub(r'[^a-z0-9]+', '-',
+                                 (datos.get('cliente') or datos.get('titulo') or tipo).lower()
+                                 ).strip('-') + '.md')
+    if os.path.exists(destino):
+        raise SystemExit('Ya existe %s; borralo o pasa otro nombre.' % destino)
+    with open(destino, 'w', encoding='utf8') as f:
+        f.write(armar_nuevo(tipo, archivos, datos))
+    print('\nEscrito: %s' % destino)
+    print('Editalo y despues: python3 mindsoftdoc.py %s' % destino)
+    return destino
+
 def main():
     ap = argparse.ArgumentParser(description='Genera un .docx con el formato de la casa Mindsoft.')
-    ap.add_argument('entrada', help='archivo markdown')
+    ap.add_argument('entrada', nargs='?', help='archivo markdown')
     ap.add_argument('-o', '--salida', help='ruta del .docx (por defecto, junto al .md)')
     ap.add_argument('--plantilla', default=PLANTILLA, help='otra plantilla .docx')
+    ap.add_argument('--nuevo', nargs='?', const='', metavar='TIPO',
+                    help='arma un .md de arranque; sin TIPO abre el menu')
     args = ap.parse_args()
+
+    if args.nuevo is not None:
+        menu_nuevo(args.nuevo or None, args.entrada)
+        return
+    if not args.entrada:
+        ap.error('falta el archivo markdown (o usa --nuevo)')
+
     salida = generar(args.entrada, args.salida, args.plantilla)
     print('Generado: %s' % salida)
     print('Reglas de la casa: %s' % resumen_limpieza())
+    if _faltantes:
+        print('AVISO - variables sin valor, quedaron a la vista en el documento: %s'
+              % resumen_variables())
 
 if __name__ == '__main__':
     main()
