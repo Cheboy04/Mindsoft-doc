@@ -12,20 +12,20 @@ Este documento existe para mostrar cada elemento que el generador sabe producir.
 El texto corrido sale en Verdana 10 puntos, justificado, con el interlineado de
 la plantilla de la casa.
 
-Se puede usar **negrita**, *cursiva* y `codigo en linea`, y todo eso se traduce a
-los runs correspondientes del formato.
+Se puede usar *cursiva* y `codigo en linea`. La **negrita** no: por regla de la
+casa sale como texto normal, y el generador avisa cuantas encontro.
 
 ### Un subtitulo
 
-Los subtitulos van en negrita de 11 puntos y no entran al indice, para que el
-indice liste solo las secciones.
+Los subtitulos van en negrita de 11 puntos. La numeracion (1, 1.1) la pone Word,
+no el markdown, y con ella entran al indice.
 
 ## Listas
 
 Las vinetas usan la numeracion de la plantilla:
 
 - Primer elemento de la lista
-- Segundo elemento, con **algo en negrita** adentro
+- Segundo elemento, con algo de texto adentro
 - Tercer elemento que menciona un archivo como `config.php`
 
 Y las numeradas se ven asi:

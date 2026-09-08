@@ -91,7 +91,10 @@ Todo lo demas se copia tal cual (`_escribir`, lineas 439-474):
 
 Antes de que cualquier texto llegue al documento pasa por `limpiar()`: guiones
 largos y medios a `-`, comillas tipograficas y angulares a `"` y `'`, puntos
-suspensivos de un caracter a `...`, espacios duros a espacio normal.
+suspensivos de un caracter a `...`, espacios duros a espacio normal. Y en
+`runs()`: la `**negrita**` sale como texto normal en parrafos, vinetas y celdas
+(se cuenta y se reporta igual); sigue viva solo en titulos, subtitulos y la
+cabecera azul de las tablas, que son estilo, no marcado.
 
 No es cosmetica: es un estandar de la empresa, y aplica sin importar quien
 escriba el markdown (persona o modelo). Al terminar, el CLI informa que corrigio
@@ -133,8 +136,22 @@ El pie con la direccion y los telefonos de Mindsoft esta fijo en
 4. **El indice lo arma Word al abrir.** Se inserta un campo TOC mas
    `updateFields`. En LibreOffice u ONLYOFFICE hay que refrescar con F9.
 
-5. **Los `###` no entran al indice, a proposito.** El indice lista solo
-   secciones (`##`).
+5. **La numeracion de titulos la pone Word, no el markdown.** `p_titulo` y
+   `p_subtitulo` cuelgan de la lista multinivel `numId 92`, que `_escribir`
+   inyecta en `word/numbering.xml` al vuelo (no vive en `plantilla.docx`: un
+   guardado desde Word la borraria sin que nadie se entere). En el `.md` los
+   titulos van sin numero; Word renumera solo al mover una seccion. Los `###`
+   ahora si entran al indice (`TOC \o "1-3"`, con `outlineLvl` explicito en
+   cada titulo, que es lo que hace que LibreOffice y ONLYOFFICE tambien puedan
+   armarlo). El titulo del propio indice va sin numerar y sin estilo `Heading2`
+   (lleva el aspecto copiado a mano en `COMO_TITULO`): con el estilo puesto,
+   Word mete el indice como primera entrada de si mismo.
+
+   Cada lista numerada del markdown cuelga de su propio `w:num` (100, 101, ...)
+   sobre el `abstractNum 91` de la plantilla, con `startOverride`. Sin eso Word
+   las encadena y la segunda lista del documento arranca donde termino la
+   primera. Los numIds del documento y los inyectados en `numbering.xml` tienen
+   que coincidir: si no, la lista sale sin numeros y en silencio.
 
 6. **Los bloques de hosting y soporte llevan precios y specs reales.** Salen de
    propuestas de 2026. Hay que revisarlos antes de mandar cada propuesta; el

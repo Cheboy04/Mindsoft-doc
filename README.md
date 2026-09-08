@@ -22,6 +22,7 @@ reemplaza:
 | comillas tipograficas y angulares | `"` y `'` |
 | puntos suspensivos de un caracter | `...` |
 | espacios duros | espacio normal |
+| `**negrita**` en cualquier texto | texto normal (la negrita solo vive en titulos y cabeceras de tabla) |
 
 Al terminar informa que corrigio, por ejemplo `Reglas de la casa: 28 guiones
 largos`. Nunca cambia nada en silencio, y aplica sin importar quien escriba el
@@ -128,13 +129,14 @@ El pie con la direccion y los telefonos de Mindsoft es fijo y no se configura.
 
 | Escribis | Sale como |
 |---|---|
-| `## Titulo` | Titulo de seccion azul con la barra debajo |
-| `### Subtitulo` | Negrita de 11 puntos |
+| `## Titulo` | Titulo de seccion azul con la barra debajo, numerado 1, 2, 3 |
+| `### Subtitulo` | Negrita de 11 puntos, numerado 1.1, 1.2 |
 | texto suelto | Parrafo Verdana 10, justificado |
 | `- item` | Vineta |
-| `1. item` | Lista numerada |
-| tabla con pipes | Cabecera azul y filas en blanco |
-| `**negrita**` `*cursiva*` `` `codigo` `` | Formato en linea |
+| `1. item` | Lista numerada, cada lista arranca de nuevo en 1 |
+| tabla con pipes | Cabecera azul y filas en blanco, texto a la izquierda |
+| `*cursiva*` `` `codigo` `` | Formato en linea |
+| `**negrita**` | Nada: sale como texto normal (regla de la casa) |
 | `[texto](url)` | Texto, con la url entre parentesis si es http |
 | `![pie](captura.png)` | Imagen centrada con pie de figura |
 | `---` en una linea | Salto de pagina |
@@ -142,7 +144,9 @@ El pie con la direccion y los telefonos de Mindsoft es fijo y no se configura.
 Las columnas de las tablas se reparten solas segun cuanto texto lleva cada una.
 Las imagenes se escalan al ancho util de la pagina sin deformarse; PNG y JPEG.
 
-Los `###` no entran al indice, a proposito: el indice lista solo las secciones.
+La numeracion la pone Word, no el markdown: en el `.md` los titulos van sin
+numero y Word los renumera solo cuando se mueve o se agrega una seccion. Los
+`###` entran al indice con su numero (`2.1`), debajo de su seccion.
 
 ## Verificacion
 

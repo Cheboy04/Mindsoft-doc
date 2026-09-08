@@ -37,8 +37,10 @@ def test_texto_que_parece_marcado():
         salida = md.runs(crudo)
         visible = ''.join(re.findall(r'<w:t[^>]*>([^<]*)</w:t>', salida))
         assert visible == esperado, (crudo, visible)
-    assert '<w:b w:val="1"/>' in md.runs('un **dato**'), 'la negrita no se aplico'
-    print('  marcado en linea: negrita, codigo y enlaces sin confundir texto normal')
+    assert '<w:b w:val="1"/>' not in md.runs('un **dato**'), 'la negrita se colo en un parrafo'
+    assert '<w:b w:val="1"/>' not in md.runs('un **dato**', celda=True), 'la negrita se colo en una celda'
+    assert '<w:jc w:val="left"/>' in md.p_tabla(['a'], [['x']]), 'la tabla salio justificada'
+    print('  marcado en linea: sin negrita en parrafos, tablas a la izquierda')
 
 
 def test_anchos_de_tabla():
@@ -161,15 +163,24 @@ def test_documento_generado():
     assert not malos, 'sobrevivieron caracteres prohibidos: %r' % malos
     assert md._conteo, 'el ejemplo traia caracteres prohibidos y no se contaron'
 
-    assert doc.count('w:pStyle w:val="Heading2"') == 7, doc.count('w:pStyle w:val="Heading2"')
+    assert doc.count('w:pStyle w:val="Heading2"') == 6, doc.count('w:pStyle w:val="Heading2"')
     assert doc.count('<w:tbl>') == 1, doc.count('<w:tbl>')
     assert doc.count('w:fill="001689"') == 3, 'cabecera azul en las 3 columnas'
     assert doc.count('w:fill="EEF1F8"') == 0, 'las filas no deben llevar sombreado alternado'
     assert doc.count('w:fill="FFFFFF"') == 9, 'las 3 filas de datos van en blanco'
     assert doc.count('w:numId w:val="90"') == 3, 'vinetas'
-    assert doc.count('w:numId w:val="91"') == 3, 'numeradas'
+    assert doc.count('w:numId w:val="100"') == 3, 'la lista numerada usa su propio numId'
     assert doc.count('<w:br w:type="page"/>') == 3, 'saltos de pagina'
-    assert 'TOC \\o' in doc, 'falta el campo de indice'
+    assert 'TOC \\o "1-3"' in doc, 'el indice tiene que bajar hasta el subtitulo'
+    # todos los titulos y subtitulos van numerados menos uno: el del indice
+    assert doc.count('w:numId w:val="92"') == doc.count('Heading2') + doc.count('Heading3'), (
+        'la numeracion de Word no cuadra con los titulos')
+    assert md.COMO_TITULO in doc, 'el indice tiene que verse como titulo sin ser Heading2'
+    num = z.read('word/numbering.xml').decode('utf8')
+    assert 'w:numId="92"' in num, 'falta la lista multinivel de los titulos'
+    assert num.count('w:startOverride') == 1, 'cada lista numerada arranca de nuevo en 1'
+    for usado in set(re.findall(r'w:numId w:val="(1\d\d)"', doc)):
+        assert 'w:numId="%s"' % usado in num, 'la lista %s no esta definida en numbering.xml' % usado
     assert 'word/media/mdimg1.png' in z.namelist(), 'falta la imagen embebida'
     assert 'rId1001' in doc and 'rId1001' in z.read('word/_rels/document.xml.rels').decode('utf8')
     assert 'updateFields' in z.read('word/settings.xml').decode('utf8')
@@ -183,10 +194,10 @@ def test_documento_generado():
     intocables = [n for n in t.namelist()
                   if n not in ('word/document.xml', 'word/header1.xml',
                                'word/settings.xml', '[Content_Types].xml',
-                               'word/_rels/document.xml.rels')]
+                               'word/numbering.xml', 'word/_rels/document.xml.rels')]
     distintas = [n for n in intocables if t.read(n) != z.read(n)]
     assert not distintas, 'se altero el formato de la plantilla en: %s' % distintas
-    assert len(intocables) == 24, len(intocables)
+    assert len(intocables) == 23, len(intocables)
     print('  documento: XML valido, %d partes del formato intactas, %s corregidos'
           % (len(intocables), md.resumen_limpieza()))
     return salida

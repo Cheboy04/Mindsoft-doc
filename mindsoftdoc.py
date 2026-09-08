@@ -139,11 +139,9 @@ def esc(t):
 
 _R = '<w:r><w:rPr>%s<w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r>'
 NORMAL = '<w:sz w:val="20"/><w:szCs w:val="20"/>'
-NEGRITA = '<w:b w:val="1"/><w:bCs w:val="1"/><w:sz w:val="20"/><w:szCs w:val="20"/>'
 CURSIVA = '<w:i w:val="1"/><w:iCs w:val="1"/><w:sz w:val="20"/><w:szCs w:val="20"/>'
 CODIGO = '<w:rFonts w:ascii="Consolas" w:cs="Consolas" w:hAnsi="Consolas"/><w:sz w:val="18"/><w:szCs w:val="18"/>'
 C_NORMAL = '<w:sz w:val="18"/><w:szCs w:val="18"/>'
-C_NEGRITA = '<w:b w:val="1"/><w:bCs w:val="1"/><w:sz w:val="18"/><w:szCs w:val="18"/>'
 C_CURSIVA = '<w:i w:val="1"/><w:iCs w:val="1"/><w:sz w:val="18"/><w:szCs w:val="18"/>'
 C_CODIGO = '<w:rFonts w:ascii="Consolas" w:cs="Consolas" w:hAnsi="Consolas"/><w:sz w:val="16"/><w:szCs w:val="16"/>'
 C_TITULO = '<w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="FFFFFF"/><w:sz w:val="18"/><w:szCs w:val="18"/>'
@@ -153,8 +151,9 @@ ENLACE = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
 
 def runs(texto, celda=False):
     """Convierte marcado en linea (**negrita**, `codigo`, *cursiva*, enlaces)."""
-    normal, negrita, cursiva, codigo = ((C_NORMAL, C_NEGRITA, C_CURSIVA, C_CODIGO)
-                                        if celda else (NORMAL, NEGRITA, CURSIVA, CODIGO))
+    normal, cursiva, codigo = ((C_NORMAL, C_CURSIVA, C_CODIGO)
+                               if celda else (NORMAL, CURSIVA, CODIGO))
+    negrita = normal         # regla de la casa: la negrita solo vive en los titulos
     out = []
     # re.split con un grupo devuelve texto suelto en los indices pares y los
     # tokens capturados en los impares. Hay que mirar la posicion, no el primer
@@ -166,6 +165,7 @@ def runs(texto, celda=False):
         if i % 2 == 0:
             out.append(_R % (normal, esc(parte)))
         elif parte.startswith('**'):
+            _conteo['negritas'] = _conteo.get('negritas', 0) + 1
             out.append(_R % (negrita, esc(parte[2:-2])))
         elif parte.startswith('`'):
             out.append(_R % (codigo, esc(parte[1:-1])))
@@ -179,19 +179,52 @@ def runs(texto, celda=False):
             out.append(_R % (normal, esc(texto_enlace)))
     return ''.join(out) or _R % (normal, '')
 
-def p_titulo(texto, barra):
-    return ('<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:pageBreakBefore w:val="0"/>'
-            '<w:spacing w:before="240" w:line="276" w:lineRule="auto"/><w:rPr/></w:pPr>'
-            '<w:r><w:rPr><w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r></w:p>'
-            % esc(texto)) + barra
+# La numeracion 1, 1.1, 1.2 la pone Word, no el markdown: asi renumera solo
+# cuando se mueve una seccion y los subtitulos entran al indice con su numero.
+NUM_TITULOS = 92
+_LVL = ('<w:lvl w:ilvl="%d"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
+        '<w:lvlText w:val="%s"/><w:lvlJc w:val="left"/><w:suff w:val="space"/>'
+        '<w:pPr><w:ind w:left="0" w:firstLine="0"/></w:pPr></w:lvl>')
+NUMERACION = ('<w:abstractNum w:abstractNumId="%d"><w:multiLevelType w:val="multilevel"/>%s'
+              '</w:abstractNum><w:num w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
+              % (NUM_TITULOS,
+                 ''.join(_LVL % (i, t) for i, t in enumerate(('%1.', '%1.%2', '%1.%2.%3'))),
+                 NUM_TITULOS, NUM_TITULOS))
+
+# Las listas numeradas del markdown son independientes entre si: cada una
+# cuelga de su propio w:num sobre el mismo abstractNum de la plantilla, con
+# startOverride, o Word las encadena y la segunda arranca donde termino la primera.
+LISTA_NUMERADA = 91
+def num_lista(n):
+    return ('<w:num w:numId="%d"><w:abstractNumId w:val="%d"/><w:lvlOverride w:ilvl="0">'
+            '<w:startOverride w:val="1"/></w:lvlOverride></w:num>' % (100 + n, LISTA_NUMERADA))
+
+def numpr(nivel):
+    return ('<w:numPr><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>' % (nivel, NUM_TITULOS))
+
+# El aspecto de Heading2, copiado a mano: lo usa el titulo del indice, que no
+# puede llevar el estilo o Word lo mete como primera entrada del propio indice.
+COMO_TITULO = ('<w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="001689"/>'
+               '<w:sz w:val="28"/><w:szCs w:val="28"/>')
+
+def p_titulo(texto, barra, numerado=True):
+    pPr = (('<w:pStyle w:val="Heading2"/><w:pageBreakBefore w:val="0"/>' + numpr(0) +
+            '<w:spacing w:before="240" w:line="276" w:lineRule="auto"/>'
+            '<w:outlineLvl w:val="1"/><w:rPr/>') if numerado else
+           ('<w:pageBreakBefore w:val="0"/>'
+            '<w:spacing w:before="240" w:line="276" w:lineRule="auto"/>'))
+    return ('<w:p><w:pPr>%s</w:pPr><w:r><w:rPr>%s<w:rtl w:val="0"/></w:rPr>'
+            '<w:t xml:space="preserve">%s</w:t></w:r></w:p>'
+            % (pPr, '' if numerado else COMO_TITULO, esc(texto))) + barra
 
 def p_parrafo(texto):
     return ('<w:p><w:pPr><w:pageBreakBefore w:val="0"/>'
             '<w:spacing w:after="120" w:line="264" w:lineRule="auto"/></w:pPr>%s</w:p>' % runs(texto))
 
 def p_subtitulo(texto):
-    return ('<w:p><w:pPr><w:pageBreakBefore w:val="0"/>'
-            '<w:spacing w:after="60" w:line="264" w:lineRule="auto"/></w:pPr>'
+    return ('<w:p><w:pPr><w:pStyle w:val="Heading3"/><w:pageBreakBefore w:val="0"/>' + numpr(1) +
+            '<w:spacing w:after="60" w:line="264" w:lineRule="auto"/>'
+            '<w:outlineLvl w:val="2"/></w:pPr>'
             '<w:r><w:rPr><w:b w:val="1"/><w:bCs w:val="1"/><w:sz w:val="22"/><w:szCs w:val="22"/>'
             '<w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r></w:p>' % esc(texto))
 
@@ -214,7 +247,8 @@ def _celda(ancho, fondo, texto, titulo=False):
             '<w:tcMar><w:top w:w="40" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/>'
             '<w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>'
             '<w:vAlign w:val="center"/></w:tcPr>'
-            '<w:p><w:pPr><w:spacing w:after="20" w:line="240" w:lineRule="auto"/></w:pPr>%s</w:p>'
+            '<w:p><w:pPr><w:spacing w:after="20" w:line="240" w:lineRule="auto"/>'
+            '<w:jc w:val="left"/></w:pPr>%s</w:p>'
             '</w:tc>' % (ancho, fondo, cuerpo))
 
 def anchos(cabeceras, filas, total=ANCHO_TABLA, minimo=700):
@@ -268,10 +302,10 @@ def p_pie_figura(texto):
             '<w:t xml:space="preserve">%s</w:t></w:r></w:p>' % esc(texto))
 
 def p_indice():
-    return (p_titulo('Indice', '')
+    return (p_titulo('Indice', '', numerado=False)
             + '<w:p><w:pPr><w:spacing w:after="120" w:line="264" w:lineRule="auto"/></w:pPr>'
               '<w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r>'
-              '<w:r><w:instrText xml:space="preserve"> TOC \\o "1-2" \\h \\z \\u </w:instrText></w:r>'
+              '<w:r><w:instrText xml:space="preserve"> TOC \\o "1-3" \\h \\z \\u </w:instrText></w:r>'
               '<w:r><w:fldChar w:fldCharType="separate"/></w:r>'
               '<w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr>'
               '<w:t xml:space="preserve">Abra el documento en Word para armar el indice, '
@@ -447,7 +481,7 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
     if quiere_indice:
         partes.append(p_indice())
 
-    imagenes, rels_extra = [], []
+    imagenes, rels_extra, listas = [], [], 0
     for tipo, dato in bloques:
         if tipo == 'h2':
             partes.append(p_titulo(dato, tpl.barra))
@@ -458,7 +492,8 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
         elif tipo == 'ul':
             partes.append(''.join(p_item(t, 90, 60) for t in dato))
         elif tipo == 'ol':
-            partes.append(''.join(p_item(t, 91, 80) for t in dato))
+            listas += 1
+            partes.append(''.join(p_item(t, 99 + listas, 80) for t in dato))
         elif tipo == 'tabla':
             partes.append(p_tabla(*dato))
         elif tipo == 'salto':
@@ -484,10 +519,10 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
 
     documento = tpl.cabeza + ''.join(partes) + tpl.cola
     _escribir(plantilla, ruta_salida, documento, encabezado, imagenes,
-              rels_extra, quiere_indice)
+              rels_extra, quiere_indice, listas)
     return ruta_salida
 
-def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, indice):
+def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, indice, listas=0):
     tmp = salida + '.tmp'
     with zipfile.ZipFile(plantilla) as zin, zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
         for it in zin.infolist():
@@ -511,6 +546,12 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
                     t = t.replace('<w:settings', '<w:settings', 1)
                     corte = t.index('>', t.index('<w:settings')) + 1
                     t = t[:corte] + '<w:updateFields w:val="true"/>' + t[corte:]
+                datos = t.encode('utf8')
+            elif it.filename == 'word/numbering.xml':
+                t = datos.decode('utf8')
+                if 'w:numId="%d"' % NUM_TITULOS not in t:
+                    extra = ''.join(num_lista(i) for i in range(listas))
+                    t = t.replace('</w:numbering>', NUMERACION + extra + '</w:numbering>', 1)
                 datos = t.encode('utf8')
             elif it.filename == '[Content_Types].xml':
                 t = datos.decode('utf8')
