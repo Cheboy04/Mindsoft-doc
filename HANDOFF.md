@@ -1,6 +1,6 @@
 # Handoff - mindsoftdoc
 
-Ultima actualizacion: 2026-09-04, rama `main`. Documento para retomar el
+Ultima actualizacion: 2026-09-07, rama `main`. Documento para retomar el
 proyecto en una sesion futura sin volver a leerlo todo. Si algo aca no coincide
 con el codigo, gana el codigo: corre `python3 test_mindsoftdoc.py` primero.
 
@@ -26,12 +26,12 @@ Python 3 puro, sin dependencias. Nada que instalar, nada que compilar.
 `plantilla.docx` es un reporte real ya aprobado (el de Siegfried Ecuador). El
 generador lo abre como ZIP, se queda con `word/document.xml`, recorta la portada
 y la barra de seccion, y reconstruye un documento nuevo pegando ese XML con
-bloques generados. Las otras 24 partes del paquete (estilos, numeracion, fuentes
-Nunito embebidas, tema, pie de pagina, media) se copian byte a byte sin tocar.
+bloques generados. Las otras 21 partes del paquete (estilos, tema, pie de
+pagina, media) se copian byte a byte sin tocar.
 
 Consecuencia practica: fuentes, colores, vinetas, bordes de tabla y pie de pagina
 salen identicos siempre, porque nunca se escriben, se heredan. Un test verifica
-que esas 24 partes queden intactas respecto de la plantilla.
+que esas 21 partes queden intactas respecto de la plantilla.
 
 Consecuencia igual de practica: **cambiar el formato de todos los documentos =
 editar `plantilla.docx` en Word**, no tocar Python. Y si se edita la plantilla,
@@ -54,22 +54,22 @@ futura automatizacion de redaccion va a producir o pre-llenar.
 
 ## Arquitectura de `mindsoftdoc.py` (un solo archivo)
 
-Cinco secciones, en orden en el archivo:
+Ocho secciones, en orden en el archivo:
 
-| Lineas | Seccion | Que hace |
-|---|---|---|
+| Seccion | Que hace |
+|---|---|
 | Reglas de la casa | `limpiar()` normaliza caracteres prohibidos y lleva la cuenta |
 | Bloques reutilizables | `incluir()` resuelve `@incluir` recursivo con tope de 10; `sustituir()` cambia `{{var}}` por el campo del front-matter |
-| Plantilla | `_bloques()` parsea `<w:p>`/`<w:tbl>` de primer nivel; `Plantilla` recorta portada, barra, cabeza y cola |
+| Plantilla | `_bloques()` parsea `<w:p>`/`<w:tbl>` de primer nivel; `Plantilla` recorta portada, barra, cabeza y cola, y resuelve los ids de la plantilla con `leer_estilos()` y `leer_numeracion()` |
 | Piezas de XML | `runs()` para marcado en linea, y un `p_*()` por cada tipo de bloque |
 | Lectura del markdown | `leer_markdown()` devuelve `(meta, bloques)`, cada bloque un `(tipo, dato)` |
 | Imagenes | `medir()` lee dimensiones de PNG/JPEG a mano; `escalar()` ajusta al ancho util |
-| Armado | `generar()` recorre bloques y arma el XML; `_escribir()` rearma el ZIP |
+| Armado | `generar()` recorre bloques y arma el XML; `espacios()` repone los `xmlns` que falten; `_escribir()` rearma el ZIP |
 | `--nuevo` | `TIPOS` y `BLOQUES` (listas literales), `armar_nuevo()` puro y testeable, `menu_nuevo()` que es solo entrada/salida |
 
 El flujo completo es lineal y cabe en una frase: markdown -> `leer_markdown` ->
 lista de bloques `(tipo, dato)` -> un `p_*()` por bloque -> concatenar con
-`tpl.cabeza` y `tpl.cola` -> `_escribir()` rearma el ZIP cambiando cinco partes.
+`tpl.cabeza` y `tpl.cola` -> `_escribir()` rearma el ZIP cambiando seis partes.
 
 ### Los tipos de bloque
 
@@ -77,14 +77,15 @@ lista de bloques `(tipo, dato)` -> un `p_*()` por bloque -> concatenar con
 al markdown son tres pasos: reconocerlo en `leer_markdown`, escribir su `p_*()`
 copiando el XML de un documento real, y despacharlo en el `for` de `generar()`.
 
-### Las cinco partes del ZIP que se reescriben
+### Las seis partes del ZIP que se reescriben
 
-Todo lo demas se copia tal cual (`_escribir`, lineas 439-474):
+Todo lo demas se copia tal cual (`_escribir`, al final del archivo):
 
 - `word/document.xml` - el documento nuevo
 - `word/header1.xml` - el primer `<w:t>` recibe el `encabezado`; el segundo se vacia
 - `word/_rels/document.xml.rels` - relaciones de las imagenes agregadas (`rId1001+`)
 - `word/settings.xml` - se inyecta `<w:updateFields>` si el documento lleva indice
+- `word/numbering.xml` - se inyecta la lista multinivel de los titulos y un `w:num` por lista numerada
 - `[Content_Types].xml` - se agregan los MIME de jpeg/jpg/gif si faltan
 
 ## Reglas de la casa
@@ -118,13 +119,14 @@ El pie con la direccion y los telefonos de Mindsoft esta fijo en
 
 ## Trampas conocidas (lo que rompe si se toca sin mirar)
 
-1. **Indices duros en `Plantilla.__init__`** (lineas 79-84). La portada son los
-   primeros 23 bloques del cuerpo, la barra de seccion es el bloque 24, y el
-   rotulo/titulo/subtitulo viven en los indices 19/20/21. Hay tres `assert` que
+1. **Indices duros en `Plantilla.__init__`**. La portada son los primeros 23
+   bloques del cuerpo, el 23 es el primer titulo del reporte original y se
+   descarta, la barra de seccion es el bloque 24, y el rotulo/titulo/subtitulo
+   viven en los indices 19/20/21. Hay tres `assert` que
    avisan si la plantilla cambia, pero si se edita `plantilla.docx` y se agrega
    o quita un parrafo antes de la portada, estos numeros se corren.
 
-2. **`poner()` reemplaza el primer `<w:t>` del bloque** (lineas 386-388). Si en
+2. **`poner()` reemplaza el primer `<w:t>` del bloque** (dentro de `generar()`). Si en
    Word se parte el texto de la portada en varios runs (pasa al editar y
    corregir ortografia), solo se reemplaza el primero y queda texto viejo
    pegado. Sintoma: la portada dice "ReporteAnalisis de Seguridad - Siegfried".
@@ -158,11 +160,17 @@ El pie con la direccion y los telefonos de Mindsoft esta fijo en
    (lleva el aspecto copiado a mano en `COMO_TITULO`): con el estilo puesto,
    Word mete el indice como primera entrada de si mismo.
 
-   Cada lista numerada del markdown cuelga de su propio `w:num` (100, 101, ...)
-   sobre el `abstractNum 91` de la plantilla, con `startOverride`. Sin eso Word
-   las encadena y la segunda lista del documento arranca donde termino la
-   primera. Los numIds del documento y los inyectados en `numbering.xml` tienen
-   que coincidir: si no, la lista sale sin numeros y en silencio.
+   Cada lista numerada del markdown cuelga de su propio `w:num` (100, 101, ...,
+   los da `id_lista()`) sobre el abstractNum decimal de la plantilla, con
+   `startOverride`. Sin eso Word las encadena y la segunda lista del documento
+   arranca donde termino la primera. Los numIds del documento y los inyectados
+   en `numbering.xml` tienen que coincidir: si no, la lista sale sin numeros y
+   en silencio, por eso el id sale de una sola funcion y `ejemplo.md` lleva dos
+   listas numeradas seguidas.
+
+   Pendiente: la inyeccion esta guardada por `if 'w:numId="92"' not in t`. Si
+   alguna vez la plantilla trae un `numId 92` propio, no se inyecta nada y se
+   pierden la numeracion de titulos y las listas, sin aviso.
 
 6. **Los bloques de hosting y soporte llevan precios y specs reales.** Salen de
    propuestas de 2026. Hay que revisarlos antes de mandar cada propuesta; el
@@ -198,19 +206,52 @@ imagenes, lectura del markdown, `@incluir` y variables (con el bloque que no
 existe y el ciclo), comentarios que no llegan al documento, los 5 tipos
 generando `.docx` valido con todos sus bloques, y documento generado (XML
 valido, cero caracteres prohibidos, conteos de titulos/tablas/listas/saltos,
-imagen embebida, y las 24 partes del formato intactas).
+estilos y listas resueltos contra la plantilla, imagen embebida, y las 21 partes
+del formato intactas).
 
-Al 2026-09-04 pasan las nueve.
+Al 2026-09-07 pasan las nueve.
+
+### El test no ve como se ve el documento
+
+Esto es lo que mas duele y no esta en ningun assert: un `pStyle` que no resuelve,
+un `numId` que no existe o un TOC vacio dan XML **valido**. El .docx se abre sin
+quejarse y el error solo se ve mirando la pagina. Los tres bugs de formato del
+2026-09-07 (titulos sin estilo, vinetas sin punto, indice vacio) pasaron los
+nueve tests.
+
+Para mirar de verdad, sin salir de la terminal:
+
+    soffice --headless --convert-to pdf ejemplo.docx
+    pdftoppm -r 75 -png -f 3 -l 3 ejemplo.pdf pag      # y abrir pag-3.png
+
+El indice es aparte: es un campo, y ni LibreOffice ni el PDF lo llenan solos.
+Hay que refrescarlo con la API de LibreOffice (`python3 -c "import uno"` ya viene
+con el paquete) antes de exportar:
+
+    soffice --headless --norestore --accept="socket,host=localhost,port=2002;urp;" &
+    # conectar por uno, doc.getDocumentIndexes().getByIndex(0).update(), y
+    # storeToURL(...writer_pdf_Export)
+
+Si el indice sale vacio, el problema es el `outlineLvl` de los titulos, no el
+campo TOC.
+
+`ejemplo.md` es la muestra de todos los elementos **y** el fixture del test:
+cualquier cambio de formato se verifica ahi, se regenera `ejemplo.docx` y se
+commitea. Arreglar `ejemplo.docx` a mano no sirve de nada, se sobrescribe.
 
 Se valido ademas contra dos documentos reales ya aprobados:
 
 - **Reporte de la cafeteria de Academia Cotopaxi.** Regenerado desde markdown da
   el mismo texto caracter por caracter una vez aplicadas las reglas de la casa, y
-  la misma estructura (13 titulos, 14 tablas, 145 negritas).
+  la misma estructura (13 titulos, 14 tablas). Las 145 negritas del original hoy
+  saldrian como texto normal: la regla de la casa es posterior a esa prueba.
 - **Propuesta de Siegfried PMC** (2026-09-04, con el sistema de bloques ya
   puesto). Reconstruida en 45 lineas de markdown mas un `@incluir` del
-  portafolio. Queda en `prueba/`, sin versionar, para comparar contra el
-  original en `ejemplos/`.
+  portafolio. Vivia en `prueba/`, que ya no esta en el disco.
+- **Propuesta de actualizacion de la cafeteria** (2026-09-07), en
+  `ac_cafeteria_system/docs/`. Partida en `-cliente.md` y `-anexo-interno.md`
+  porque el generador no corta un `.md` en dos, y con los numeros de titulo
+  sacados a mano para que no chocaran con los de Word.
 
 ## Archivos
 
@@ -220,8 +261,8 @@ Se valido ademas contra dos documentos reales ya aprobados:
 | `plantilla.docx` | El formato de la casa. Editar solo para cambiar el formato de todos los documentos |
 | `bloques/` | Bloques reutilizables, extraidos de las propuestas reales. Texto, sin codigo |
 | `esqueletos/` | Estructura de cada tipo de documento. Los `<!-- -->` guian a quien escribe y no llegan al `.docx` |
-| `ejemplos/` | Propuestas y el estimation table reales, de referencia. **Sin versionar: llevan precios de clientes** |
-| `prueba/` | Reconstrucciones para comparar contra los originales. Sin versionar, descartable |
+| `ejemplos/` | Propuestas reales de referencia. **Sin versionar: llevan precios de clientes.** Hoy no esta en el disco; el estimation table quedo en `EstimationTable/` |
+| `prueba/` | Reconstrucciones para comparar contra los originales. Sin versionar, descartable. Hoy no esta en el disco |
 | `ejemplo.md` / `ejemplo.docx` | Muestra de cada elemento soportado. Sirve de fixture del test |
 | `ejemplo-captura.png` | Imagen del ejemplo, medida por el test (600x180) |
 | `test_mindsoftdoc.py` | Verificacion |

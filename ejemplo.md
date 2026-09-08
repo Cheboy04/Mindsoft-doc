@@ -34,6 +34,11 @@ Y las numeradas se ven asi:
 2. Segundo paso
 3. Tercer paso
 
+Cada lista numerada arranca de nuevo en 1, no sigue a la anterior:
+
+1. Primer paso de otro procedimiento
+2. Segundo paso
+
 ## Tablas
 
 Las columnas se reparten solas segun cuanto texto lleva cada una:

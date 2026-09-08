@@ -139,6 +139,7 @@ El pie con la direccion y los telefonos de Mindsoft es fijo y no se configura.
 | `**negrita**` | Nada: sale como texto normal (regla de la casa) |
 | `[texto](url)` | Texto, con la url entre parentesis si es http |
 | `![pie](captura.png)` | Imagen centrada con pie de figura |
+| `> cita` | Parrafo normal: se le quita el `>` |
 | `---` en una linea | Salto de pagina |
 
 Las columnas de las tablas se reparten solas segun cuanto texto lleva cada una.
@@ -156,14 +157,15 @@ Comprueba las reglas de la casa, el marcado en linea, el reparto de columnas,
 la medicion de imagenes, la lectura del markdown, los `@incluir` y las
 variables (incluidos el bloque que falta y el ciclo), que los comentarios no
 lleguen al documento, que los 5 tipos generen un `.docx` valido con todos sus
-bloques, y que el documento generado sea XML valido con las 24 partes del
-formato intactas respecto de la plantilla.
+bloques, y que el documento generado sea XML valido, con los estilos y las
+listas resueltos contra la plantilla y las 21 partes del formato intactas.
 
 Se valido ademas contra dos documentos reales ya aprobados:
 
 - El reporte de la cafeteria de Academia Cotopaxi: regenerado desde markdown da
   el mismo texto caracter por caracter una vez aplicadas las reglas de la casa,
-  y la misma estructura (13 titulos, 14 tablas, 145 negritas).
+  y la misma estructura (13 titulos, 14 tablas). Las 145 negritas del original
+  hoy saldrian como texto normal: la regla de la casa es posterior a esa prueba.
 - La propuesta de Siegfried PMC, ya con bloques: 45 lineas de markdown mas un
   `@incluir` del portafolio.
 
@@ -181,6 +183,10 @@ Se valido ademas contra dos documentos reales ya aprobados:
 - Guardar el documento desde ONLYOFFICE reescribe los estilos. Si hay que
   editar a mano, conviene hacerlo en Word, o mejor editar el markdown y
   regenerar.
+- Guardar `plantilla.docx` desde un editor renumera los ids internos de estilos
+  y listas. El generador los resuelve por nombre, asi que no se rompe, pero ese
+  guardado se lleva las tipografias Nunito embebidas: si el documento tiene que
+  verse igual en una maquina sin Nunito instalada, hay que volver a embeberlas.
 
 ## Archivos
 

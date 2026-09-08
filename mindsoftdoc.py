@@ -7,7 +7,7 @@
 El formato sale de plantilla.docx: se reutiliza su XML literal (fuentes,
 colores, encabezado, pie, vinetas, tablas), no se reinventa.
 """
-import os, re, sys, struct, zipfile, shutil, argparse
+import os, re, struct, zipfile, shutil, argparse
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 PLANTILLA = os.path.join(AQUI, 'plantilla.docx')
@@ -136,7 +136,9 @@ class Plantilla:
             leer_numeracion(z.read('word/numbering.xml').decode('utf8'))
         cuerpo = self.doc[self.doc.index('<w:body>') + 8:self.doc.rindex('<w:sectPr')]
         els = _bloques(cuerpo)
-        # La portada son los 23 primeros parrafos; el 24 es la barra de seccion.
+        # Los 23 primeros bloques son la portada (el ultimo es su salto de pagina).
+        # El 23 es el primer titulo del reporte original y se descarta; el 24 es
+        # su barra de seccion, que se reutiliza debajo de cada titulo generado.
         assert len(els) > 24, 'plantilla.docx no tiene la estructura esperada'
         self.portada = list(els[:23])
         self.barra = els[24]
@@ -167,7 +169,6 @@ def runs(texto, celda=False):
     """Convierte marcado en linea (**negrita**, `codigo`, *cursiva*, enlaces)."""
     normal, cursiva, codigo = ((C_NORMAL, C_CURSIVA, C_CODIGO)
                                if celda else (NORMAL, CURSIVA, CODIGO))
-    negrita = normal         # regla de la casa: la negrita solo vive en los titulos
     out = []
     # re.split con un grupo devuelve texto suelto en los indices pares y los
     # tokens capturados en los impares. Hay que mirar la posicion, no el primer
@@ -179,8 +180,9 @@ def runs(texto, celda=False):
         if i % 2 == 0:
             out.append(_R % (normal, esc(parte)))
         elif parte.startswith('**'):
+            # regla de la casa: la negrita solo vive en los titulos
             _conteo['negritas'] = _conteo.get('negritas', 0) + 1
-            out.append(_R % (negrita, esc(parte[2:-2])))
+            out.append(_R % (normal, esc(parte[2:-2])))
         elif parte.startswith('`'):
             out.append(_R % (codigo, esc(parte[1:-1])))
         elif parte.startswith('*'):
@@ -231,9 +233,12 @@ def leer_numeracion(xml):
 # Las listas numeradas del markdown son independientes entre si: cada una
 # cuelga de su propio w:num sobre el mismo abstractNum de la plantilla, con
 # startOverride, o Word las encadena y la segunda arranca donde termino la primera.
+def id_lista(n):
+    return 100 + n          # el numId de la lista numerada n del documento
+
 def num_lista(n):
     return ('<w:num w:numId="%d"><w:abstractNumId w:val="%d"/><w:lvlOverride w:ilvl="0">'
-            '<w:startOverride w:val="1"/></w:lvlOverride></w:num>' % (100 + n, ABS_NUMERADA))
+            '<w:startOverride w:val="1"/></w:lvlOverride></w:num>' % (id_lista(n), ABS_NUMERADA))
 
 def numpr(nivel):
     return ('<w:numPr><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>' % (nivel, NUM_TITULOS))
@@ -537,8 +542,8 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
         elif tipo == 'ul':
             partes.append(''.join(p_item(t, NUM_VINETA, 60) for t in dato))
         elif tipo == 'ol':
+            partes.append(''.join(p_item(t, id_lista(listas), 80) for t in dato))
             listas += 1
-            partes.append(''.join(p_item(t, 99 + listas, 80) for t in dato))
         elif tipo == 'tabla':
             partes.append(p_tabla(*dato))
         elif tipo == 'salto':
@@ -554,7 +559,7 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
             ext = os.path.splitext(entera)[1].lower().lstrip('.') or 'png'
             nombre = 'word/media/mdimg%d.%s' % (n, ext)
             rid = 'rId%d' % (1000 + n)
-            imagenes.append((nombre, datos, ext))
+            imagenes.append((nombre, datos))
             rels_extra.append('<Relationship Id="%s" Type="http://schemas.openxmlformats.org/'
                               'officeDocument/2006/relationships/image" Target="media/mdimg%d.%s"/>'
                               % (rid, n, ext))
@@ -584,7 +589,7 @@ def espacios(documento):
     return cabeza + ''.join(' xmlns:%s="%s"' % (p, u) for p, u in ESPACIOS
                             if 'xmlns:%s=' % p not in cabeza) + documento[corte:]
 
-def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, indice, listas=0):
+def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, indice, listas):
     tmp = salida + '.tmp'
     with zipfile.ZipFile(plantilla) as zin, zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as zout:
         for it in zin.infolist():
@@ -605,7 +610,6 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
             elif it.filename == 'word/settings.xml' and indice:
                 t = datos.decode('utf8')
                 if 'updateFields' not in t:
-                    t = t.replace('<w:settings', '<w:settings', 1)
                     corte = t.index('>', t.index('<w:settings')) + 1
                     t = t[:corte] + '<w:updateFields w:val="true"/>' + t[corte:]
                 datos = t.encode('utf8')
@@ -623,7 +627,7 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
                                       % (ext, mime))
                 datos = t.encode('utf8')
             zout.writestr(it, datos)
-        for nombre, datos, _ in imagenes:
+        for nombre, datos in imagenes:
             zout.writestr(nombre, datos)
     shutil.move(tmp, salida)
 

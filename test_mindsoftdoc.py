@@ -176,7 +176,9 @@ def test_documento_generado():
     assert doc.count('w:fill="EEF1F8"') == 0, 'las filas no deben llevar sombreado alternado'
     assert doc.count('w:fill="FFFFFF"') == 9, 'las 3 filas de datos van en blanco'
     assert doc.count('w:numId w:val="%d"' % md.NUM_VINETA) == 3, 'vinetas'
-    assert doc.count('w:numId w:val="100"') == 3, 'la lista numerada usa su propio numId'
+    # dos listas numeradas seguidas: cada una con su numId, cada una desde 1
+    assert doc.count('w:numId w:val="%d"' % md.id_lista(0)) == 3, 'la primera lista numerada'
+    assert doc.count('w:numId w:val="%d"' % md.id_lista(1)) == 2, 'la segunda lista numerada'
     # portada + indice + el unico --- del cuerpo (la plantilla escribe el suyo
     # con w:clear, asi que se cuenta el atributo, no la etiqueta entera)
     assert len(re.findall(r'<w:br w:type="page"', doc)) == 3, 'saltos de pagina'
@@ -190,7 +192,7 @@ def test_documento_generado():
     assert 'w:numId="%d"' % md.NUM_VINETA in num, 'la vineta no existe en numbering.xml'
     assert 'w:abstractNumId="%d"' % md.ABS_NUMERADA in num, 'falta el abstractNum de la numerada'
     assert 'w:numId="92"' in num, 'falta la lista multinivel de los titulos'
-    assert num.count('w:startOverride') == 1, 'cada lista numerada arranca de nuevo en 1'
+    assert num.count('w:startOverride') == 2, 'cada lista numerada arranca de nuevo en 1'
     for usado in set(re.findall(r'w:numId w:val="(1\d\d)"', doc)):
         assert 'w:numId="%s"' % usado in num, 'la lista %s no esta definida en numbering.xml' % usado
     assert 'word/media/mdimg1.png' in z.namelist(), 'falta la imagen embebida'
