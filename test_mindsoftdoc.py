@@ -184,16 +184,16 @@ def test_documento_generado():
     assert len(re.findall(r'<w:br w:type="page"', doc)) == 3, 'saltos de pagina'
     assert 'TOC \\o "1-3"' in doc, 'el indice tiene que bajar hasta el subtitulo'
     # todos los titulos y subtitulos van numerados menos uno: el del indice
-    assert doc.count('w:numId w:val="92"') == titulos + subtitulos, (
+    assert doc.count('w:numId w:val="%d"' % md.NUM_TITULOS) == titulos + subtitulos, (
         'la numeracion de Word no cuadra con los titulos')
     assert md.COMO_TITULO in doc, 'el indice tiene que verse como titulo sin llevar el estilo'
     num = z.read('word/numbering.xml').decode('utf8')
     # las listas se resuelven por definicion: un guardado de la plantilla las renumera
     assert 'w:numId="%d"' % md.NUM_VINETA in num, 'la vineta no existe en numbering.xml'
     assert 'w:abstractNumId="%d"' % md.ABS_NUMERADA in num, 'falta el abstractNum de la numerada'
-    assert 'w:numId="92"' in num, 'falta la lista multinivel de los titulos'
+    assert 'w:numId="%d"' % md.NUM_TITULOS in num, 'falta la lista multinivel de los titulos'
     assert num.count('w:startOverride') == 2, 'cada lista numerada arranca de nuevo en 1'
-    for usado in set(re.findall(r'w:numId w:val="(1\d\d)"', doc)):
+    for usado in set(re.findall(r'w:numId w:val="(\d+)"', doc)):
         assert 'w:numId="%s"' % usado in num, 'la lista %s no esta definida en numbering.xml' % usado
     assert 'word/media/mdimg1.png' in z.namelist(), 'falta la imagen embebida'
     assert 'rId1001' in doc and 'rId1001' in z.read('word/_rels/document.xml.rels').decode('utf8')

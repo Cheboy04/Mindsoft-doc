@@ -80,23 +80,25 @@ Lo que no tenga valor se deja a la vista en el documento y se avisa al terminar
 | Bloque | Va en |
 |---|---|
 | `bloques/portafolio-clientes.md` | Propuestas y cotizaciones |
-| `bloques/forma-de-pago-50-50.md` | Todo lo que lleve costo |
+| `bloques/forma-de-pago-50-50.md` | Costo por fases: 50% al inicio y 50% al fin de cada fase |
+| `bloques/forma-de-pago-anticipo-final.md` | Costo global: 50% a la firma y 50% contra entrega |
 | `bloques/sem-google-ads.md` | Propuestas con campana |
-| `bloques/hosting-dedicado.md` | Propuestas con infraestructura |
+| `bloques/hosting-dedicado.md` | Infraestructura sobre Debian, sin panel |
+| `bloques/hosting-dedicado-cpanel.md` | Infraestructura sobre AlmaLinux con WHM/cPanel |
 | `bloques/hosting-externo.md` | Propuestas con infraestructura |
 | `bloques/soporte-mensual.md` | Propuestas con soporte |
 
 Las specs y los precios de los bloques de hosting y soporte salen de propuestas
 reales: **revisalos en cada propuesta antes de mandarla**.
 
-Dos bloques cubren una sola de las dos variantes que se usan en la practica, asi
-que a veces hay que escribir la seccion a mano en vez de incluirla:
+Hay dos pares de bloques que se excluyen entre si: se elige uno, no los dos.
 
-- `forma-de-pago-50-50.md` es la version por fases (InmoWeb, BYD). La version
-  global, "50% anticipo / 50% al finalizar" (Siegfried PMC, Eliana), no tiene
-  bloque.
-- `hosting-dedicado.md` es la oferta sobre Debian (BYD). La oferta sobre
-  AlmaLinux con WHM/cPanel (Inmoweb) no tiene bloque.
+- Forma de pago: `forma-de-pago-50-50.md` es la version por fases (InmoWeb, BYD);
+  `forma-de-pago-anticipo-final.md` es la global (Siegfried PMC, Eliana).
+- Hosting: `hosting-dedicado.md` es la oferta sobre Debian, sin panel (BYD);
+  `hosting-dedicado-cpanel.md` es la de AlmaLinux con WHM/cPanel (Inmoweb). Este
+  ultimo pide `hosting_vcpu`, `hosting_ram`, `hosting_disco`, `hosting_mensual` y
+  `hosting_anual` en el front-matter.
 
 Los `<!-- comentarios -->` de los esqueletos no llegan al documento.
 

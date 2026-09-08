@@ -197,15 +197,22 @@ def runs(texto, celda=False):
 
 # La numeracion 1, 1.1, 1.2 la pone Word, no el markdown: asi renumera solo
 # cuando se mueve una seccion y los subtitulos entran al indice con su numero.
-NUM_TITULOS = 92
+# Estos tres ids son los que el generador *agrega* a numbering.xml. No se
+# fijan a mano: leer_numeracion() los corre por encima de los que ya trae la
+# plantilla. Pisar un id existente no da error, solo saca la numeracion.
+NUM_TITULOS = 92       # numId de la lista multinivel de los titulos
+ABS_TITULOS = 92       # su abstractNumId
+BASE_LISTAS = 100      # numId de la primera lista numerada del documento
 _LVL = ('<w:lvl w:ilvl="%d"><w:start w:val="1"/><w:numFmt w:val="decimal"/>'
         '<w:lvlText w:val="%s"/><w:lvlJc w:val="left"/><w:suff w:val="space"/>'
         '<w:pPr><w:ind w:left="0" w:firstLine="0"/></w:pPr></w:lvl>')
-NUMERACION = ('<w:abstractNum w:abstractNumId="%d"><w:multiLevelType w:val="multilevel"/>%s'
-              '</w:abstractNum><w:num w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
-              % (NUM_TITULOS,
-                 ''.join(_LVL % (i, t) for i, t in enumerate(('%1.', '%1.%2', '%1.%2.%3'))),
-                 NUM_TITULOS, NUM_TITULOS))
+
+def numeracion_titulos():
+    return ('<w:abstractNum w:abstractNumId="%d"><w:multiLevelType w:val="multilevel"/>%s'
+            '</w:abstractNum><w:num w:numId="%d"><w:abstractNumId w:val="%d"/></w:num>'
+            % (ABS_TITULOS,
+               ''.join(_LVL % (i, t) for i, t in enumerate(('%1.', '%1.%2', '%1.%2.%3'))),
+               NUM_TITULOS, ABS_TITULOS))
 
 # Mismo cuento que los estilos: un guardado de la plantilla renumera las listas.
 # Se buscan por su definicion (vineta / decimal), no por el id, que no sobrevive.
@@ -213,7 +220,7 @@ NUM_VINETA = 90        # numId de la vineta, se usa tal cual
 ABS_NUMERADA = 91      # abstractNumId de la numerada, cada lista cuelga uno propio
 
 def leer_numeracion(xml):
-    global NUM_VINETA, ABS_NUMERADA
+    global NUM_VINETA, ABS_NUMERADA, NUM_TITULOS, ABS_TITULOS, BASE_LISTAS
     formato = {}
     for m in re.finditer(r'<w:abstractNum w:abstractNumId="(\d+)"[^>]*>(.*?)</w:abstractNum>',
                          xml, re.S):
@@ -229,12 +236,17 @@ def leer_numeracion(xml):
     decimales = [a for a, (f, _) in formato.items() if f == 'decimal']
     if decimales:
         ABS_NUMERADA = int(decimales[0])
+    # lo que se inyecta va por encima de todo lo que ya existe, para no pisarlo
+    NUM_TITULOS = max([int(n) for n, _ in nums] + [0]) + 1
+    BASE_LISTAS = NUM_TITULOS + 1
+    ABS_TITULOS = max([int(a) for a in re.findall(r'<w:abstractNum w:abstractNumId="(\d+)"', xml)]
+                      + [0]) + 1
 
 # Las listas numeradas del markdown son independientes entre si: cada una
 # cuelga de su propio w:num sobre el mismo abstractNum de la plantilla, con
 # startOverride, o Word las encadena y la segunda arranca donde termino la primera.
 def id_lista(n):
-    return 100 + n          # el numId de la lista numerada n del documento
+    return BASE_LISTAS + n   # el numId de la lista numerada n del documento
 
 def num_lista(n):
     return ('<w:num w:numId="%d"><w:abstractNumId w:val="%d"/><w:lvlOverride w:ilvl="0">'
@@ -614,11 +626,9 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
                     t = t[:corte] + '<w:updateFields w:val="true"/>' + t[corte:]
                 datos = t.encode('utf8')
             elif it.filename == 'word/numbering.xml':
-                t = datos.decode('utf8')
-                if 'w:numId="%d"' % NUM_TITULOS not in t:
-                    extra = ''.join(num_lista(i) for i in range(listas))
-                    t = t.replace('</w:numbering>', NUMERACION + extra + '</w:numbering>', 1)
-                datos = t.encode('utf8')
+                extra = ''.join(num_lista(i) for i in range(listas))
+                datos = datos.decode('utf8').replace(
+                    '</w:numbering>', numeracion_titulos() + extra + '</w:numbering>', 1).encode('utf8')
             elif it.filename == '[Content_Types].xml':
                 t = datos.decode('utf8')
                 for ext, mime in (('jpeg', 'image/jpeg'), ('jpg', 'image/jpeg'), ('gif', 'image/gif')):
@@ -648,11 +658,15 @@ TIPOS = [
 # archivo, etiqueta, tipos donde se ofrece, marcado por defecto.
 # El orden de esta lista es el orden en que salen en el documento.
 BLOQUES = [
-    ('forma-de-pago-50-50.md', 'Forma de pago 50/50',
+    ('forma-de-pago-50-50.md', 'Forma de pago 50/50 por fase',
      ('propuesta-con-costos', 'cotizacion'), True),
+    ('forma-de-pago-anticipo-final.md', 'Forma de pago 50/50 anticipo-final',
+     ('propuesta-con-costos', 'cotizacion'), False),
     ('sem-google-ads.md', 'SEM / Google Ads',
      ('propuesta-con-costos', 'propuesta-sin-costos'), False),
-    ('hosting-dedicado.md', 'Hosting dedicado',
+    ('hosting-dedicado.md', 'Hosting dedicado (Debian)',
+     ('propuesta-con-costos', 'propuesta-sin-costos'), False),
+    ('hosting-dedicado-cpanel.md', 'Hosting dedicado (AlmaLinux + cPanel)',
      ('propuesta-con-costos', 'propuesta-sin-costos'), False),
     ('hosting-externo.md', 'Manejo de hosting externo',
      ('propuesta-con-costos', 'propuesta-sin-costos'), False),

@@ -168,24 +168,33 @@ El pie con la direccion y los telefonos de Mindsoft esta fijo en
    en silencio, por eso el id sale de una sola funcion y `ejemplo.md` lleva dos
    listas numeradas seguidas.
 
-   Pendiente: la inyeccion esta guardada por `if 'w:numId="92"' not in t`. Si
-   alguna vez la plantilla trae un `numId 92` propio, no se inyecta nada y se
-   pierden la numeracion de titulos y las listas, sin aviso.
+   Los ids que se inyectan ya no son fijos: `leer_numeracion()` los corre por
+   encima del maximo que trae la plantilla (`NUM_TITULOS`, `ABS_TITULOS` y
+   `BASE_LISTAS`, que es de donde sale `id_lista()`). Con la plantilla de hoy
+   dan 7, 6 y 8. Asi un guardado que renumere `numbering.xml` no puede chocar
+   contra ellos, que es lo que antes se perdia en silencio.
 
 6. **Los bloques de hosting y soporte llevan precios y specs reales.** Salen de
    propuestas de 2026. Hay que revisarlos antes de mandar cada propuesta; el
    generador no sabe si estan vigentes.
 
-7. **Hay dos ofertas de hosting distintas en los ejemplos, y el bloque solo trae
-   una.** BYD usa Debian 13 + CrowdSec + nftables; Inmoweb usa AlmaLinux +
-   WHM/cPanel + Imunify360. No son versiones de lo mismo, son productos
-   distintos. `bloques/hosting-dedicado.md` trae la de BYD, por ser la mas
-   reciente. Si Mindsoft vende las dos, falta un segundo bloque.
+7. **Hay dos pares de bloques que se excluyen entre si.** El menu los ofrece
+   como opciones sueltas y no impide marcar los dos; si se marcan, el documento
+   sale con dos formas de pago o dos ofertas de hosting. Se elige uno:
 
-8. **Hay dos formas de pago y el bloque solo cubre una.** Siegfried PMC y Eliana
-   usan "50% anticipo / 50% al finalizar" (global); InmoWeb y BYD usan "50% al
-   inicio de cada fase / 50% al fin de cada fase". `bloques/forma-de-pago-50-50.md`
-   trae la segunda. Falta `forma-de-pago-anticipo-final.md`.
+   - Hosting: `hosting-dedicado.md` (Debian 13 + CrowdSec + nftables, sin panel,
+     la de BYD) contra `hosting-dedicado-cpanel.md` (AlmaLinux + WHM/cPanel +
+     Imunify360, la de Inmoweb). No son versiones de lo mismo, son productos
+     distintos.
+   - Forma de pago: `forma-de-pago-50-50.md` (por fase: InmoWeb, BYD) contra
+     `forma-de-pago-anticipo-final.md` (global: Siegfried PMC, Eliana).
+
+8. **`hosting-dedicado-cpanel.md` se escribio sin la propuesta de Inmoweb a la
+   vista** (`ejemplos/` no esta en el disco). El stack sale del historial; el
+   dimensionamiento y los precios quedaron como variables de front-matter
+   (`hosting_vcpu`, `hosting_ram`, `hosting_disco`, `hosting_mensual`,
+   `hosting_anual`) para que no viaje ningun numero inventado. **Contrastar las
+   filas de servicio contra la propuesta original antes de mandarlo.**
 
 ## Limitaciones actuales
 
