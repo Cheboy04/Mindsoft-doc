@@ -221,12 +221,18 @@ def p_parrafo(texto):
     return ('<w:p><w:pPr><w:pageBreakBefore w:val="0"/>'
             '<w:spacing w:after="120" w:line="264" w:lineRule="auto"/></w:pPr>%s</w:p>' % runs(texto))
 
+# El mismo azul de los titulos, en 11 puntos. Va dos veces: en el run del texto
+# y en el rPr de la marca de parrafo, que es de donde Word saca el formato del
+# numero de la lista (sin eso el 2.1 sale en negro y en 9 puntos).
+SUBTITULO = ('<w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="001689"/>'
+             '<w:sz w:val="22"/><w:szCs w:val="22"/>')
+
 def p_subtitulo(texto):
     return ('<w:p><w:pPr><w:pStyle w:val="Heading3"/><w:pageBreakBefore w:val="0"/>' + numpr(1) +
             '<w:spacing w:after="60" w:line="264" w:lineRule="auto"/>'
-            '<w:outlineLvl w:val="2"/></w:pPr>'
-            '<w:r><w:rPr><w:b w:val="1"/><w:bCs w:val="1"/><w:sz w:val="22"/><w:szCs w:val="22"/>'
-            '<w:rtl w:val="0"/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r></w:p>' % esc(texto))
+            '<w:outlineLvl w:val="2"/><w:rPr>' + SUBTITULO + '</w:rPr></w:pPr>'
+            '<w:r><w:rPr>' + SUBTITULO + '<w:rtl w:val="0"/></w:rPr>'
+            '<w:t xml:space="preserve">%s</w:t></w:r></w:p>' % esc(texto))
 
 def p_item(texto, num_id, despues):
     return ('<w:p><w:pPr><w:pStyle w:val="Normal"/><w:numPr><w:ilvl w:val="0"/>'

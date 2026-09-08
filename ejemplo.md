@@ -17,7 +17,7 @@ casa sale como texto normal, y el generador avisa cuantas encontro.
 
 ### Un subtitulo
 
-Los subtitulos van en negrita de 11 puntos. La numeracion (1, 1.1) la pone Word,
+Los subtitulos van en negrita azul de 11 puntos. La numeracion (1, 1.1) la pone Word,
 no el markdown, y con ella entran al indice.
 
 ## Listas

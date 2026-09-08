@@ -130,7 +130,7 @@ El pie con la direccion y los telefonos de Mindsoft es fijo y no se configura.
 | Escribis | Sale como |
 |---|---|
 | `## Titulo` | Titulo de seccion azul con la barra debajo, numerado 1, 2, 3 |
-| `### Subtitulo` | Negrita de 11 puntos, numerado 1.1, 1.2 |
+| `### Subtitulo` | Negrita azul de 11 puntos, numerado 1.1, 1.2 |
 | texto suelto | Parrafo Verdana 10, justificado |
 | `- item` | Vineta |
 | `1. item` | Lista numerada, cada lista arranca de nuevo en 1 |
