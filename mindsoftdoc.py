@@ -115,11 +115,25 @@ def _bloques(xml):
             j = m2.end()
         out.append(xml[m.start():j]); i = j
 
+# Un guardado de la plantilla desde Word o ONLYOFFICE renumera los styleId
+# ("Heading2" paso a llamarse "788"), y un pStyle que no resuelve deja el titulo
+# sin negrita, sin color y sin tamano. El w:name si es estable, asi que los
+# estilos se buscan por nombre y estos valores son solo el punto de partida.
+ESTILOS = {'normal': 'Normal', 'heading 2': 'Heading2', 'heading 3': 'Heading3'}
+
+def leer_estilos(xml):
+    for m in re.finditer(r'<w:style [^>]*w:styleId="([^"]+)"[^>]*>(.*?)</w:style>', xml, re.S):
+        nombre = re.search(r'<w:name w:val="([^"]+)"', m.group(2))
+        if nombre and nombre.group(1).lower() in ESTILOS:
+            ESTILOS[nombre.group(1).lower()] = m.group(1)
+
 class Plantilla:
     def __init__(self, ruta=PLANTILLA):
         self.ruta = ruta
         with zipfile.ZipFile(ruta) as z:
             self.doc = z.read('word/document.xml').decode('utf8')
+            leer_estilos(z.read('word/styles.xml').decode('utf8'))
+            leer_numeracion(z.read('word/numbering.xml').decode('utf8'))
         cuerpo = self.doc[self.doc.index('<w:body>') + 8:self.doc.rindex('<w:sectPr')]
         els = _bloques(cuerpo)
         # La portada son los 23 primeros parrafos; el 24 es la barra de seccion.
@@ -191,13 +205,35 @@ NUMERACION = ('<w:abstractNum w:abstractNumId="%d"><w:multiLevelType w:val="mult
                  ''.join(_LVL % (i, t) for i, t in enumerate(('%1.', '%1.%2', '%1.%2.%3'))),
                  NUM_TITULOS, NUM_TITULOS))
 
+# Mismo cuento que los estilos: un guardado de la plantilla renumera las listas.
+# Se buscan por su definicion (vineta / decimal), no por el id, que no sobrevive.
+NUM_VINETA = 90        # numId de la vineta, se usa tal cual
+ABS_NUMERADA = 91      # abstractNumId de la numerada, cada lista cuelga uno propio
+
+def leer_numeracion(xml):
+    global NUM_VINETA, ABS_NUMERADA
+    formato = {}
+    for m in re.finditer(r'<w:abstractNum w:abstractNumId="(\d+)"[^>]*>(.*?)</w:abstractNum>',
+                         xml, re.S):
+        lvl = re.search(r'<w:lvl w:ilvl="0".*?</w:lvl>', m.group(2), re.S)
+        fmt = re.search(r'<w:numFmt w:val="(\w+)"', lvl.group(0)) if lvl else None
+        if fmt:
+            formato[m.group(1)] = (fmt.group(1), '<w:lvlText w:val="\u2022"' in lvl.group(0))
+    nums = re.findall(r'<w:num w:numId="(\d+)"\s*>\s*<w:abstractNumId w:val="(\d+)"\s*/>', xml)
+    # la vineta de la casa es el punto redondo; si no esta, sirve cualquier vineta
+    vinetas = [(n, formato[a][1]) for n, a in nums if formato.get(a, ('',))[0] == 'bullet']
+    if vinetas:
+        NUM_VINETA = int(sorted(vinetas, key=lambda v: not v[1])[0][0])
+    decimales = [a for a, (f, _) in formato.items() if f == 'decimal']
+    if decimales:
+        ABS_NUMERADA = int(decimales[0])
+
 # Las listas numeradas del markdown son independientes entre si: cada una
 # cuelga de su propio w:num sobre el mismo abstractNum de la plantilla, con
 # startOverride, o Word las encadena y la segunda arranca donde termino la primera.
-LISTA_NUMERADA = 91
 def num_lista(n):
     return ('<w:num w:numId="%d"><w:abstractNumId w:val="%d"/><w:lvlOverride w:ilvl="0">'
-            '<w:startOverride w:val="1"/></w:lvlOverride></w:num>' % (100 + n, LISTA_NUMERADA))
+            '<w:startOverride w:val="1"/></w:lvlOverride></w:num>' % (100 + n, ABS_NUMERADA))
 
 def numpr(nivel):
     return ('<w:numPr><w:ilvl w:val="%d"/><w:numId w:val="%d"/></w:numPr>' % (nivel, NUM_TITULOS))
@@ -208,7 +244,8 @@ COMO_TITULO = ('<w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="001689"/>'
                '<w:sz w:val="28"/><w:szCs w:val="28"/>')
 
 def p_titulo(texto, barra, numerado=True):
-    pPr = (('<w:pStyle w:val="Heading2"/><w:pageBreakBefore w:val="0"/>' + numpr(0) +
+    pPr = (('<w:pStyle w:val="%s"/>' % ESTILOS['heading 2'] +
+            '<w:pageBreakBefore w:val="0"/>' + numpr(0) +
             '<w:spacing w:before="240" w:line="276" w:lineRule="auto"/>'
             '<w:outlineLvl w:val="1"/><w:rPr/>') if numerado else
            ('<w:pageBreakBefore w:val="0"/>'
@@ -228,14 +265,16 @@ SUBTITULO = ('<w:b w:val="1"/><w:bCs w:val="1"/><w:color w:val="001689"/>'
              '<w:sz w:val="22"/><w:szCs w:val="22"/>')
 
 def p_subtitulo(texto):
-    return ('<w:p><w:pPr><w:pStyle w:val="Heading3"/><w:pageBreakBefore w:val="0"/>' + numpr(1) +
+    return ('<w:p><w:pPr><w:pStyle w:val="%s"/>' % ESTILOS['heading 3'] +
+            '<w:pageBreakBefore w:val="0"/>' + numpr(1) +
             '<w:spacing w:after="60" w:line="264" w:lineRule="auto"/>'
             '<w:outlineLvl w:val="2"/><w:rPr>' + SUBTITULO + '</w:rPr></w:pPr>'
             '<w:r><w:rPr>' + SUBTITULO + '<w:rtl w:val="0"/></w:rPr>'
             '<w:t xml:space="preserve">%s</w:t></w:r></w:p>' % esc(texto))
 
 def p_item(texto, num_id, despues):
-    return ('<w:p><w:pPr><w:pStyle w:val="Normal"/><w:numPr><w:ilvl w:val="0"/>'
+    return ('<w:p><w:pPr><w:pStyle w:val="%s"/>' % ESTILOS['normal'] +
+            '<w:numPr><w:ilvl w:val="0"/>'
             '<w:numId w:val="%d"/></w:numPr><w:spacing w:after="%d" w:line="264" w:lineRule="auto"/>'
             '</w:pPr>%s</w:p>' % (num_id, despues, runs(texto)))
 
@@ -496,7 +535,7 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
         elif tipo == 'p':
             partes.append(p_parrafo(dato))
         elif tipo == 'ul':
-            partes.append(''.join(p_item(t, 90, 60) for t in dato))
+            partes.append(''.join(p_item(t, NUM_VINETA, 60) for t in dato))
         elif tipo == 'ol':
             listas += 1
             partes.append(''.join(p_item(t, 99 + listas, 80) for t in dato))
@@ -523,10 +562,27 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
             if pie:
                 partes.append(p_pie_figura(pie))
 
-    documento = tpl.cabeza + ''.join(partes) + tpl.cola
+    documento = espacios(tpl.cabeza + ''.join(partes) + tpl.cola)
     _escribir(plantilla, ruta_salida, documento, encabezado, imagenes,
               rels_extra, quiere_indice, listas)
     return ruta_salida
+
+# Un guardado de la plantilla desde Word o ONLYOFFICE puede dejar fuera algun
+# xmlns que el generador si usa (paso con "pic", el de las imagenes: el .docx
+# salia con XML invalido). Se vuelven a declarar aca en vez de exigir que la
+# plantilla los conserve, que es algo que nadie va a recordar.
+ESPACIOS = (
+    ('pic', 'http://schemas.openxmlformats.org/drawingml/2006/picture'),
+    ('a',   'http://schemas.openxmlformats.org/drawingml/2006/main'),
+    ('wp',  'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'),
+    ('r',   'http://schemas.openxmlformats.org/officeDocument/2006/relationships'),
+)
+
+def espacios(documento):
+    corte = documento.index('>', documento.index('<w:document'))
+    cabeza = documento[:corte]
+    return cabeza + ''.join(' xmlns:%s="%s"' % (p, u) for p, u in ESPACIOS
+                            if 'xmlns:%s=' % p not in cabeza) + documento[corte:]
 
 def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, indice, listas=0):
     tmp = salida + '.tmp'

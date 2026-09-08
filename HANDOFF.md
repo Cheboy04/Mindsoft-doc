@@ -133,6 +133,17 @@ El pie con la direccion y los telefonos de Mindsoft esta fijo en
    zebra de las tablas (commit `e0851cb`): no sobrevivia. Si hay que editar a
    mano, hacerlo en Word; mejor, editar el markdown y regenerar.
 
+   Guardar `plantilla.docx` desde un editor tambien **renumera los ids**: los
+   `styleId` (`Heading2` paso a `788`, `Normal` a `786`) y las listas de
+   `numbering.xml` (la vineta paso de `numId 90` a `5`). Un `pStyle` o un
+   `numId` que no resuelve no da error: el titulo sale sin negrita, sin color y
+   sin tamano, y la vineta sale sin punto. Por eso el generador ya no los cita
+   por id: `leer_estilos()` los busca por `w:name` y `leer_numeracion()` por su
+   definicion (bullet / decimal). Del mismo guardado salio que faltara el
+   `xmlns:pic` en `<w:document>` (`espacios()` lo repone) y que se perdieran las
+   Nunito embebidas, que siguen citadas en `styles.xml` pero ya no viajan en el
+   archivo.
+
 4. **El indice lo arma Word al abrir.** Se inserta un campo TOC mas
    `updateFields`. En LibreOffice u ONLYOFFICE hay que refrescar con F9.
 

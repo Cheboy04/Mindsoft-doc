@@ -163,20 +163,32 @@ def test_documento_generado():
     assert not malos, 'sobrevivieron caracteres prohibidos: %r' % malos
     assert md._conteo, 'el ejemplo traia caracteres prohibidos y no se contaron'
 
-    assert doc.count('w:pStyle w:val="Heading2"') == 6, doc.count('w:pStyle w:val="Heading2"')
+    # los styleId se resuelven por nombre: un guardado de la plantilla los renumera
+    titulos = doc.count('w:pStyle w:val="%s"' % md.ESTILOS['heading 2'])
+    subtitulos = doc.count('w:pStyle w:val="%s"' % md.ESTILOS['heading 3'])
+    assert titulos == 6, titulos
+    estilos = zipfile.ZipFile(md.PLANTILLA).read('word/styles.xml').decode('utf8')
+    for clave in ('normal', 'heading 2', 'heading 3'):
+        assert 'w:styleId="%s"' % md.ESTILOS[clave] in estilos, (
+            'el estilo %r no existe en la plantilla' % clave)
     assert doc.count('<w:tbl>') == 1, doc.count('<w:tbl>')
     assert doc.count('w:fill="001689"') == 3, 'cabecera azul en las 3 columnas'
     assert doc.count('w:fill="EEF1F8"') == 0, 'las filas no deben llevar sombreado alternado'
     assert doc.count('w:fill="FFFFFF"') == 9, 'las 3 filas de datos van en blanco'
-    assert doc.count('w:numId w:val="90"') == 3, 'vinetas'
+    assert doc.count('w:numId w:val="%d"' % md.NUM_VINETA) == 3, 'vinetas'
     assert doc.count('w:numId w:val="100"') == 3, 'la lista numerada usa su propio numId'
-    assert doc.count('<w:br w:type="page"/>') == 3, 'saltos de pagina'
+    # portada + indice + el unico --- del cuerpo (la plantilla escribe el suyo
+    # con w:clear, asi que se cuenta el atributo, no la etiqueta entera)
+    assert len(re.findall(r'<w:br w:type="page"', doc)) == 3, 'saltos de pagina'
     assert 'TOC \\o "1-3"' in doc, 'el indice tiene que bajar hasta el subtitulo'
     # todos los titulos y subtitulos van numerados menos uno: el del indice
-    assert doc.count('w:numId w:val="92"') == doc.count('Heading2') + doc.count('Heading3'), (
+    assert doc.count('w:numId w:val="92"') == titulos + subtitulos, (
         'la numeracion de Word no cuadra con los titulos')
-    assert md.COMO_TITULO in doc, 'el indice tiene que verse como titulo sin ser Heading2'
+    assert md.COMO_TITULO in doc, 'el indice tiene que verse como titulo sin llevar el estilo'
     num = z.read('word/numbering.xml').decode('utf8')
+    # las listas se resuelven por definicion: un guardado de la plantilla las renumera
+    assert 'w:numId="%d"' % md.NUM_VINETA in num, 'la vineta no existe en numbering.xml'
+    assert 'w:abstractNumId="%d"' % md.ABS_NUMERADA in num, 'falta el abstractNum de la numerada'
     assert 'w:numId="92"' in num, 'falta la lista multinivel de los titulos'
     assert num.count('w:startOverride') == 1, 'cada lista numerada arranca de nuevo en 1'
     for usado in set(re.findall(r'w:numId w:val="(1\d\d)"', doc)):
@@ -197,7 +209,7 @@ def test_documento_generado():
                                'word/numbering.xml', 'word/_rels/document.xml.rels')]
     distintas = [n for n in intocables if t.read(n) != z.read(n)]
     assert not distintas, 'se altero el formato de la plantilla en: %s' % distintas
-    assert len(intocables) == 23, len(intocables)
+    assert len(intocables) == 21, len(intocables)
     print('  documento: XML valido, %d partes del formato intactas, %s corregidos'
           % (len(intocables), md.resumen_limpieza()))
     return salida
