@@ -1,12 +1,12 @@
-## Introduccion
+## Introducción
 
-<!-- Para quien es esta guia, que resuelve y como usarla. -->
+<!-- Para quién es esta guía, qué resuelve y cómo usarla. -->
 
-## Buenas practicas
+## Buenas prácticas
 
 ### Tema 1
 
-<!-- Recomendacion concreta, y la fuente que la respalda. -->
+<!-- Recomendación concreta, y la fuente que la respalda. -->
 
 ## Procedimiento paso a paso
 

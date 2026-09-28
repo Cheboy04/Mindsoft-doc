@@ -1,19 +1,19 @@
 ## Portafolio de Clientes
 
-- Haute Fromagerie: desarrollo de sitio de comercio electronico con Shopify.
-- Rogue Creamery: optimizacion y reporteria SEO en Shopify.
-- Republica del Cacao: desarrollo de un nuevo sitio web multilingue, campana de Google Ads y asistencia continua.
-- Ayau Records: desarrollo de una aplicacion similar a Spotify para musica local.
-- Camara Ecuatoriano Britanica: desarrollo de un nuevo sitio web multilingue y asistencia continua.
+- Haute Fromagerie: desarrollo de sitio de comercio electrónico con Shopify.
+- Rogue Creamery: optimización y reportería SEO en Shopify.
+- República del Cacao: desarrollo de un nuevo sitio web multilingüe, campaña de Google Ads y asistencia continua.
+- Ayau Records: desarrollo de una aplicación similar a Spotify para música local.
+- Cámara Ecuatoriano Británica: desarrollo de un nuevo sitio web multilingüe y asistencia continua.
 - Tectocarbon: desarrollo de nuevo sitio.
-- Laboratorios Siegfried: rediseno del sitio web, soporte continuo, desarrollo de un sistema de cupones y soporte en infraestructura.
+- Laboratorios Siegfried: rediseño del sitio web, soporte continuo, desarrollo de un sistema de cupones y soporte en infraestructura.
 - Sagcha: soporte en infraestructura.
-- Ana Maria Vasquez: desarrollo de un nuevo sitio web, campana de correo electronico y asistencia continua.
+- Ana María Vásquez: desarrollo de un nuevo sitio web, campaña de correo electrónico y asistencia continua.
 - Inacorp: desarrollo de un sistema de intercambio de puntos para empleados.
-- Aglomerados Cotopaxi: desarrollo de nuevo sitio web 2020, aplicacion movil 2019, campanas en Google y Facebook.
+- Aglomerados Cotopaxi: desarrollo de nuevo sitio web 2020, aplicación móvil 2019, campañas en Google y Facebook.
 - Fresenius Medical Care: sitio web corporativo de Fresenius Medical Care Ecuador.
-- LaGuarda: catalogo de productos.
+- LaGuarda: catálogo de productos.
 - PM4R: portal de entrenamiento online, Washington D.C.
 - AEON Explorer: cotizador de seguros, Buenos Aires, Argentina.
-- Marathon Sports: portal y aplicacion movil del Mundial.
-- UDLA (Universidad de las Americas, Quito): sistema de evaluacion docente y administrativa, sistema de examen de admision, sistema de orientacion vocacional, consultoria web y cursos web de formacion docente.
+- Marathon Sports: portal y aplicación móvil del Mundial.
+- UDLA (Universidad de las Américas, Quito): sistema de evaluación docente y administrativa, sistema de examen de admisión, sistema de orientación vocacional, consultoría web y cursos web de formación docente.

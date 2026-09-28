@@ -60,7 +60,7 @@ def _ruta_bloque(nombre, base):
 def incluir(lineas, base, profundidad=0):
     """Reemplaza cada linea '@incluir ruta' por el contenido de ese archivo."""
     if profundidad > 10:
-        raise SystemExit('@incluir anidado demasiado profundo: hay un ciclo?')
+        raise SystemExit('@incluir anidado demasiado profundo: ¿hay un ciclo?')
     out = []
     for l in lineas:
         m = INCLUIR.match(l.strip())
@@ -303,6 +303,10 @@ ESPACIADOR = ('<w:p><w:pPr><w:pageBreakBefore w:val="0"/>'
 SALTO = ('<w:p><w:pPr><w:spacing w:line="264" w:lineRule="auto"/></w:pPr>'
          '<w:r><w:br w:type="page"/></w:r></w:p>')
 
+# El contorno de la tabla de la casa. Lo comparten las tablas y el recuadro del codigo.
+BORDE_CAJA = ('<w:top w:val="single" w:sz="4" w:color="BFC7DA"/><w:left w:val="single" w:sz="4" w:color="BFC7DA"/>'
+              '<w:bottom w:val="single" w:sz="4" w:color="BFC7DA"/><w:right w:val="single" w:sz="4" w:color="BFC7DA"/>')
+
 def _celda(ancho, fondo, texto, titulo=False):
     cuerpo = _R % (C_TITULO, esc(texto)) if titulo else runs(texto, celda=True)
     return ('<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/>'
@@ -328,12 +332,10 @@ def anchos(cabeceras, filas, total=ANCHO_TABLA, minimo=700):
 def p_tabla(cabeceras, filas):
     w = anchos(cabeceras, filas)
     assert sum(w) == ANCHO_TABLA
-    x = ('<w:tbl><w:tblPr><w:tblW w:w="%d" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>'
-         '<w:top w:val="single" w:sz="4" w:color="BFC7DA"/><w:left w:val="single" w:sz="4" w:color="BFC7DA"/>'
-         '<w:bottom w:val="single" w:sz="4" w:color="BFC7DA"/><w:right w:val="single" w:sz="4" w:color="BFC7DA"/>'
+    x = ('<w:tbl><w:tblPr><w:tblW w:w="%d" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>%s'
          '<w:insideH w:val="single" w:sz="4" w:color="BFC7DA"/><w:insideV w:val="single" w:sz="4" w:color="BFC7DA"/>'
          '</w:tblBorders></w:tblPr><w:tblGrid>%s</w:tblGrid>'
-         % (ANCHO_TABLA, ''.join('<w:gridCol w:w="%d"/>' % a for a in w)))
+         % (ANCHO_TABLA, BORDE_CAJA, ''.join('<w:gridCol w:w="%d"/>' % a for a in w)))
     x += ('<w:tr><w:trPr><w:tblHeader/></w:trPr>%s</w:tr>'
           % ''.join(_celda(a, '001689', c, True) for a, c in zip(w, cabeceras)))
     for fila in filas:
@@ -341,6 +343,25 @@ def p_tabla(cabeceras, filas):
         # alternado. El zebra no sobrevive a un guardado desde ONLYOFFICE.
         x += '<w:tr>%s</w:tr>' % ''.join(_celda(a, 'FFFFFF', c) for a, c in zip(w, fila))
     return x + '</w:tbl>' + ESPACIADOR
+
+# Bloque de codigo: una tabla de una celda con fondo gris, que es el recuadro que
+# sobrevive a un guardado desde ONLYOFFICE (el fondo de celda si, el borde de
+# parrafo no esta probado). Una linea del .md es una linea del .docx, con
+# <w:br/> y no un parrafo por linea, para que Word no meta espacio entre ellas.
+# El texto va literal: sin runs(), asi que un ** o un ` no se interpreta.
+FONDO_CODIGO = 'F3F5F9'
+
+def p_codigo(lineas):
+    cuerpo = '<w:r><w:br/></w:r>'.join(
+        _R % (C_CODIGO, esc(l.replace('\t', '    '))) for l in lineas)
+    return ('<w:tbl><w:tblPr><w:tblW w:w="%d" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>%s'
+            '</w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="%d"/></w:tblGrid><w:tr>'
+            '<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/>'
+            '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/>'
+            '<w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>'
+            '<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/>'
+            '<w:jc w:val="left"/></w:pPr>%s</w:p></w:tc></w:tr></w:tbl>'
+            % (ANCHO_TABLA, BORDE_CAJA, ANCHO_TABLA, ANCHO_TABLA, FONDO_CODIGO, cuerpo)) + ESPACIADOR
 
 def p_imagen(rid, ancho_emu, alto_emu, indice):
     return ('<w:p><w:pPr><w:pageBreakBefore w:val="0"/><w:spacing w:after="60" w:line="264" '
@@ -412,6 +433,15 @@ def leer_markdown(texto, base=None):
         l = lineas[i]
         cruda = l.rstrip()
         s = cruda.strip()
+
+        if s.startswith('```'):
+            cerrar()
+            fin = next((j for j in range(i + 1, len(lineas))
+                        if lineas[j].strip().startswith('```')), None)
+            if fin is None:
+                raise SystemExit('Bloque de codigo sin cerrar: falta el ``` que abre en "%s"' % s)
+            bloques.append(('codigo', [x.rstrip() for x in lineas[i + 1:fin]]))
+            i = fin + 1; continue
 
         if not s:
             cerrar(); i += 1; continue
@@ -558,6 +588,8 @@ def generar(ruta_md, ruta_salida=None, plantilla=PLANTILLA):
             listas += 1
         elif tipo == 'tabla':
             partes.append(p_tabla(*dato))
+        elif tipo == 'codigo':
+            partes.append(p_codigo(dato))
         elif tipo == 'salto':
             partes.append(SALTO)
         elif tipo == 'img':
@@ -650,9 +682,9 @@ def _escribir(plantilla, salida, documento, encabezado, imagenes, rels_extra, in
 TIPOS = [
     ('propuesta-con-costos', 'Propuesta con costos',  'Propuesta'),
     ('propuesta-sin-costos', 'Propuesta sin costos',  'Propuesta'),
-    ('analisis',             'Documento de analisis', 'Reporte'),
-    ('guia',                 'Guia / informativo',    'Guia'),
-    ('cotizacion',           'Cotizacion',            'Cotizacion'),
+    ('analisis',             'Documento de análisis', 'Reporte'),
+    ('guia',                 'Guía / informativo',    'Guía'),
+    ('cotizacion',           'Cotización',            'Cotización'),
 ]
 
 # archivo, etiqueta, tipos donde se ofrece, marcado por defecto.
@@ -707,18 +739,18 @@ def _elegir(titulo, opciones, multiple=False, marcados=()):
     for i, etiqueta in enumerate(opciones, 1):
         print('  %d) %-32s %s' % (i, etiqueta, '[x]' if i - 1 in marcados else ''))
     while True:
-        crudo = input('> ' if not multiple else '> (numeros separados por espacio, Enter = los marcados) ')
+        crudo = input('> ' if not multiple else '> (números separados por espacio, Enter = los marcados) ')
         crudo = crudo.strip()
         if multiple and not crudo:
             return list(marcados)
         try:
             elegidos = [int(x) - 1 for x in crudo.split()]
         except ValueError:
-            print('  Solo numeros.'); continue
+            print('  Solo números.'); continue
         if not elegidos or any(e < 0 or e >= len(opciones) for e in elegidos):
             print('  Fuera de rango.'); continue
         if not multiple and len(elegidos) != 1:
-            print('  Elegi uno solo.'); continue
+            print('  Elegí uno solo.'); continue
         return elegidos
 
 def menu_nuevo(tipo=None, destino=None):
@@ -750,7 +782,7 @@ def menu_nuevo(tipo=None, destino=None):
     with open(destino, 'w', encoding='utf8') as f:
         f.write(armar_nuevo(tipo, archivos, datos))
     print('\nEscrito: %s' % destino)
-    print('Editalo y despues: python3 mindsoftdoc.py %s' % destino)
+    print('Editalo y después: python3 mindsoftdoc.py %s' % destino)
     return destino
 
 def main():
@@ -759,7 +791,7 @@ def main():
     ap.add_argument('-o', '--salida', help='ruta del .docx (por defecto, junto al .md)')
     ap.add_argument('--plantilla', default=PLANTILLA, help='otra plantilla .docx')
     ap.add_argument('--nuevo', nargs='?', const='', metavar='TIPO',
-                    help='arma un .md de arranque; sin TIPO abre el menu')
+                    help='arma un .md de arranque; sin TIPO abre el menú')
     args = ap.parse_args()
 
     if args.nuevo is not None:

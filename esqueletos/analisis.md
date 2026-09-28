@@ -1,25 +1,25 @@
 ## Resumen ejecutivo
 
-<!-- Que se analizo, que se encontro y que hay que hacer. Media pagina, sin jerga.
-     Es lo unico que lee quien decide. -->
+<!-- Qué se analizó, qué se encontró y qué hay que hacer. Media página, sin jerga.
+     Es lo único que lee quien decide. -->
 
-## Diagnostico
+## Diagnóstico
 
 <!-- Los datos medidos. Tablas y capturas, no opiniones. -->
 
-| Metrica | Valor | Meta |
+| Métrica | Valor | Meta |
 |---|---|---|
 |  |  |  |
 
 ## Problemas identificados
 
-<!-- Uno por vineta, cada uno con la evidencia que lo respalda. -->
+<!-- Uno por viñeta, cada uno con la evidencia que lo respalda. -->
 
 ## Objetivo
 
-<!-- Que estado se quiere alcanzar, en terminos medibles. -->
+<!-- Qué estado se quiere alcanzar, en términos medibles. -->
 
-## Plan de accion
+## Plan de acción
 
 ### Etapa 1
 

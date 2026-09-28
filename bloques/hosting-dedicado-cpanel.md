@@ -8,39 +8,39 @@
      cambian por cliente. El generador avisa si queda alguno sin valor.
      Si el cliente no necesita panel, va bloques/hosting-dedicado.md (Debian). -->
 
-Para garantizar el manejo total de sus recursos, nuestra recomendacion para su
+Para garantizar el manejo total de sus recursos, nuestra recomendación para su
 sitio web en cuanto a servidores es el uso de un servidor dedicado con panel de
-administracion. Esto significa que usted sera el unico que lo utiliza y que
-podra administrar sus dominios, cuentas de correo y bases de datos desde una
-interfaz web, sin depender de nosotros para las tareas del dia a dia. Ademas
+administración. Esto significa que usted será el único que lo utiliza y que
+podrá administrar sus dominios, cuentas de correo y bases de datos desde una
+interfaz web, sin depender de nosotros para las tareas del día a día. Además
 trae otras ventajas:
 
 - Control de acceso mejorado.
 - Prestaciones adaptadas a sus necesidades.
-- Sin comparticion de recursos.
-- Administracion autonoma de dominios, subdominios, correos y respaldos desde cPanel.
-- Capacidad de alojar otros sistemas o sitios web de su propiedad. Puede aumentar el costo segun las licencias necesarias.
+- Sin compartición de recursos.
+- Administración autónoma de dominios, subdominios, correos y respaldos desde cPanel.
+- Capacidad de alojar otros sistemas o sitios web de su propiedad. Puede aumentar el costo según las licencias necesarias.
 
-En caso de necesitar mas recursos o configuraciones distintas, haganoslo saber
+En caso de necesitar más recursos o configuraciones distintas, háganoslo saber
 para cotizar un servidor dedicado a sus necesidades.
 
-| Descripcion | Detalle |
+| Descripción | Detalle |
 |---|---|
 | vCPU | {{hosting_vcpu}} |
 | RAM | {{hosting_ram}} |
-| Region | US East |
+| Región | US East |
 | Espacio en disco | {{hosting_disco}} |
 | Sistema operativo | AlmaLinux |
-| Panel de administracion | WHM / cPanel, licencia incluida |
+| Panel de administración | WHM / cPanel, licencia incluida |
 | Antivirus | ClamAV + MALDET |
 | Firewall | CSF |
-| Proteccion DDoS | Incluida |
+| Protección DDoS | Incluida |
 | Web Application Firewall | Imunify360 |
-| Proteccion de fuerza bruta | Imunify360 + cPHulk |
+| Protección de fuerza bruta | Imunify360 + cPHulk |
 | PHP | Reforzado 8.X |
 | SSL | Incluido |
 | Servidor de correo (incluye relay) | Incluido |
-| Migracion | Incluida |
+| Migración | Incluida |
 | Uptime | 99.9% |
-| Renovacion mensual | {{hosting_mensual}} |
-| Renovacion anual | {{hosting_anual}} |
+| Renovación mensual | {{hosting_mensual}} |
+| Renovación anual | {{hosting_anual}} |

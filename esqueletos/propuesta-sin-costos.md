@@ -2,18 +2,18 @@
 
 ## Enfoque del proyecto
 
-<!-- Que problema resuelve y por que este camino. -->
+<!-- Qué problema resuelve y por qué este camino. -->
 
 ## Arquitectura general
 
-<!-- Frontend, backend, integraciones. Vinetas cortas. -->
+<!-- Frontend, backend, integraciones. Viñetas cortas. -->
 
 ## Alcance
 
-<!-- Una seccion ## por modulo. Adentro, "Alcance:" y vinetas con los entregables. -->
+<!-- Una sección ## por módulo. Adentro, "Alcance:" y viñetas con los entregables. -->
 
-### Modulo 1
+### Módulo 1
 
-## Proximos pasos
+## Próximos pasos
 
-<!-- Que necesita Mindsoft del cliente para poder cotizar. -->
+<!-- Qué necesita Mindsoft del cliente para poder cotizar. -->

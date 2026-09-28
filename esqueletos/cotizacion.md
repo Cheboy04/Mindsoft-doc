@@ -2,9 +2,9 @@
 
 ## Detalle de cambios solicitados
 
-Los precios estan expresados en USD.
+Los precios están expresados en USD.
 
-| # | Descripcion del cambio | Pagina | Horas est. | Costo |
+| # | Descripción del cambio | Página | Horas est. | Costo |
 |---|---|---|---|---|
 | 1 |  |  |  |  |
 
@@ -14,8 +14,8 @@ Los precios estan expresados en USD.
 
 ### Notas y condiciones
 
-- Se recomienda hacer un respaldo completo del sitio antes de iniciar cualquier modificacion.
+- Se recomienda hacer un respaldo completo del sitio antes de iniciar cualquier modificación.
 
 ## Trabajos futuros
 
-<!-- Que queda fuera de esta cotizacion y cuanto costaria. Opcional. -->
+<!-- Qué queda fuera de esta cotización y cuánto costaría. Opcional. -->
