@@ -81,6 +81,38 @@ def test_lectura_markdown():
     print('  markdown: titulos, listas, tabla y salto reconocidos')
 
 
+def test_bloque_de_codigo():
+    # Adentro de ``` nada es marcado: ni titulo, ni tabla, ni vineta, ni negrita,
+    # ni salto. Y la sangria se conserva: en un JSON es lo que se lee.
+    crudo = ('Antes.\n\n```json\n{\n  "a": 1,\n\t"b": "**x**"\n}\n# no es titulo\n'
+             '| no | tabla |\n|---|---|\n- no vineta\n---\n\n```\n\nDespues.\n')
+    meta, bloques = md.leer_markdown(crudo)
+    tipos = [t for t, _ in bloques]
+    assert tipos == ['p', 'codigo', 'p'], tipos
+    lineas = bloques[1][1]
+    assert lineas == ['{', '  "a": 1,', '\t"b": "**x**"', '}', '# no es titulo',
+                      '| no | tabla |', '|---|---|', '- no vineta', '---', ''], lineas
+
+    xml = md.p_codigo(lineas)
+    visible = re.findall(r'<w:t[^>]*>([^<]*)</w:t>', xml)
+    assert '    "b": "**x**"' in visible, 'el tab va a 4 espacios y la negrita queda literal'
+    assert '  "a": 1,' in visible, 'se perdio la sangria'
+    assert xml.count('<w:br/>') == len(lineas) - 1, 'una linea del .md es una linea del .docx'
+    assert 'Consolas' in xml and 'xml:space="preserve"' in xml
+    assert 'w:fill="%s"' % md.FONDO_CODIGO in xml, 'el recuadro no tiene fondo'
+    assert xml.count('w:color="BFC7DA"') == 4, 'el recuadro tiene que llevar los cuatro bordes de la casa'
+    assert '<w:b w:val="1"/>' not in xml
+    parseString('<r xmlns:w="urn:w">%s</r>' % xml)
+
+    # un ``` sin cerrar se comeria el resto del documento en silencio
+    try:
+        md.leer_markdown('Uno.\n\n```\nsin cerrar\n\n## Titulo\n')
+        assert False, 'deberia haber fallado'
+    except SystemExit as e:
+        assert '```' in str(e), e
+    print('  codigo: literal, con sangria, en recuadro, y el ``` sin cerrar corta')
+
+
 def test_incluir_y_variables():
     d = tempfile.mkdtemp()
     with open(os.path.join(d, 'bloque.md'), 'w', encoding='utf8') as f:
@@ -171,7 +203,9 @@ def test_documento_generado():
     for clave in ('normal', 'heading 2', 'heading 3'):
         assert 'w:styleId="%s"' % md.ESTILOS[clave] in estilos, (
             'el estilo %r no existe en la plantilla' % clave)
-    assert doc.count('<w:tbl>') == 1, doc.count('<w:tbl>')
+    assert doc.count('<w:tbl>') == 2, 'la tabla y el recuadro del codigo'
+    assert doc.count('w:fill="%s"' % md.FONDO_CODIGO) == 1, 'el recuadro del codigo'
+    assert '  "nombre": "Ana Perez",' in visible, 'el codigo perdio la sangria'
     assert doc.count('w:fill="001689"') == 3, 'cabecera azul en las 3 columnas'
     assert doc.count('w:fill="EEF1F8"') == 0, 'las filas no deben llevar sombreado alternado'
     assert doc.count('w:fill="FFFFFF"') == 9, 'las 3 filas de datos van en blanco'
@@ -224,6 +258,7 @@ if __name__ == '__main__':
     test_anchos_de_tabla()
     test_medir_imagen()
     test_lectura_markdown()
+    test_bloque_de_codigo()
     test_incluir_y_variables()
     test_comentarios_no_llegan_al_documento()
     test_esqueletos_y_bloques_generan()

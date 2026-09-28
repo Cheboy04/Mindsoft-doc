@@ -49,6 +49,15 @@ Las columnas se reparten solas segun cuanto texto lleva cada una:
 | Cuentas alcanzadas | 687 | Excluye cuentas internas de prueba |
 | Proporcion afectada | 100 % | De los correos de devolucion |
 
+Y los bloques de codigo van en un recuadro, literales y con su sangria:
+
+```json
+{
+  "nombre": "Ana Perez",
+  "telefono": "+593998787878"
+}
+```
+
 ## Imagenes
 
 Las capturas se escalan al ancho util de la pagina:
